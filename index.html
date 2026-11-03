@@ -1,0 +1,1523 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Металл изнутри: от руды до батареи. Шахта с рудами Казахстана, подбор материала, симулятор коррозии и конструктор батареи.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3CradialGradient id='g' cx='.35' cy='.3'%3E%3Cstop offset='0' stop-color='%23fff'/%3E%3Cstop offset='.4' stop-color='%23b9c0c6'/%3E%3Cstop offset='1' stop-color='%23444b52'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='14' fill='url(%23g)'/%3E%3C/svg%3E">
+<style>:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); } [hidden] { display: none !important; } img { max-width: 100%; }</style>
+<title>Материал и коррозия</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: dark editorial landing (3D liquid-metal hero) → scroll-driven mine fly-through → four tools (advisor / selector / simulator / battery).
+   Palette: deliberately dark-only. Graphite rock neutrals, molten-metal orange as the single accent. */
+:root {
+  --bg: #0a0c0d;
+  --surface: #13171a;
+  --surface2: #1a1f22;
+  --ink: #eef0ee;
+  --muted: #9aa4a2;
+  --line: #283034;
+  --rust: #ff6a2b;
+  --rust-soft: #4a2414;
+  --steel: #8fb0c4;
+  --good: #5bbd84;
+  --bad: #ff7d68;
+  --s1: #8fb0c4; --s2: #ff6a2b; --s3: #5bbd84; --s4: #b496dc; --s5: #e2b44a; --s6: #5cc3dc;
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+  --font-label: "Archivo Narrow", "Arial Narrow", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, monospace;
+  --gutter-l: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; margin: 0; overflow-x: hidden; }
+a { color: inherit; }
+button { font-family: inherit; }
+.gutter { padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
+
+/* ---------- верхняя навигация ---------- */
+.topnav { position: fixed; z-index: 20; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); pointer-events: none; }
+.topnav > * { pointer-events: auto; }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 14px var(--font-display); font-stretch: 110%; letter-spacing: .01em; text-decoration: none; background: rgba(10,12,13,.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 8px 14px 8px 10px; border-radius: 999px; border: 1px solid var(--line); }
+.brand i { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9c0c6 35%, #444b52 75%); box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.links { display: flex; gap: 2px; background: rgba(10,12,13,.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+.links a { font-size: 13px; text-decoration: none; color: var(--muted); padding: 6px 12px; border-radius: 999px; }
+.links a:hover, .links a.on { color: var(--ink); background: var(--surface2); }
+.navr { display: flex; align-items: center; gap: 8px; }
+.lang { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: rgba(10,12,13,.6); }
+.lang button { font: 600 12px var(--font-label); letter-spacing: .08em; padding: 7px 11px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.pill { display: inline-flex; align-items: center; gap: 10px; font: 600 14px var(--font-body); text-decoration: none; border-radius: 999px; padding: 10px 10px 10px 18px; background: var(--rust); color: #140804; border: 0; cursor: pointer; }
+.pill b { width: 26px; height: 26px; border-radius: 50%; background: #140804; color: var(--rust); display: grid; place-items: center; font-size: 14px; }
+.pill.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); padding: 10px 18px; }
+.pill.sm { padding: 7px 7px 7px 14px; font-size: 13px; }
+.pill.sm b { width: 22px; height: 22px; }
+@media (max-width: 860px) { .links { display: none; } }
+@media (max-width: 420px) { .brand span { display: none; } }
+
+/* ---------- главный экран ---------- */
+.hero { position: relative; min-height: max(620px, 92vh); display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden;
+  background: radial-gradient(60% 70% at 72% 42%, #1d1612 0%, var(--bg) 70%); }
+.hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero-in { position: relative; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; padding-block: 120px 40px; max-width: 1280px; width: 100%; margin: 0 auto; }
+.eyebrow { font: 600 12px var(--font-label); letter-spacing: .16em; text-transform: uppercase; color: var(--rust); margin: 0 0 14px; }
+.hero h1 { font-family: var(--font-display); font-stretch: 112%; font-weight: 600; font-size: clamp(38px, 6.4vw, 84px); line-height: .98; letter-spacing: -0.035em; margin: 0; max-width: 13ch; text-wrap: balance; }
+.hero h1 span { display: block; }
+.hero h1 span + span { color: var(--muted); font-weight: 400; }
+.hero p.lead { color: var(--muted); max-width: 46ch; margin: 18px 0 26px; font-size: 16px; }
+.hero .ctas { display: flex; flex-wrap: wrap; gap: 10px; }
+.hero-stats { display: flex; gap: 22px; font-family: var(--font-data); font-size: 12.5px; color: var(--muted); }
+.hero-stats b { display: block; font: 600 26px var(--font-display); font-stretch: 112%; color: var(--ink); }
+
+/* ---------- шахта ---------- */
+.cave { position: relative; height: 760vh; background: #070808; }
+.cave-sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+.cave canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cave-fallback { position: absolute; inset: 0; background: radial-gradient(50% 60% at 50% 55%, #2a1d15, #070808 70%); }
+.cave-ui { position: absolute; inset: 0; pointer-events: none; }
+.cave-ui .card { position: absolute; left: var(--gutter-l); bottom: 40px; max-width: min(440px, calc(100% - 32px)); opacity: 0; transform: translateY(14px); transition: opacity .45s ease, transform .45s ease; }
+.cave-ui .card.on { opacity: 1; transform: none; pointer-events: auto; }
+.cave-ui .intro, .cave-ui .outro { left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -40%); text-align: center; max-width: min(560px, calc(100% - 32px)); }
+.cave-ui .intro.on, .cave-ui .outro.on { transform: translate(-50%, -50%); }
+@media (prefers-reduced-motion: reduce) { .cave-ui .card { transition: none; } }
+.cave-ui h2 { font-family: var(--font-display); font-stretch: 112%; font-weight: 600; font-size: clamp(30px, 5vw, 56px); line-height: 1; letter-spacing: -0.03em; margin: 0 0 12px; text-wrap: balance; }
+.cave-ui p { color: #c9cfcd; margin: 0 0 16px; }
+.scroll-hint { font-family: var(--font-data); font-size: 12px; color: var(--muted); letter-spacing: .1em; }
+.stop { background: rgba(10,12,13,.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.08); padding: 18px 20px; }
+.stop .sym { display: flex; align-items: baseline; gap: 12px; }
+.stop .swatch { align-self: center; width: 52px; height: 52px; border-radius: 50%; background-size: 180%; background-position: center; background-color: var(--mc); background-blend-mode: multiply; box-shadow: inset -8px -10px 16px rgba(0,0,0,.55), inset 6px 6px 12px rgba(255,255,255,.25), 0 6px 16px rgba(0,0,0,.5); flex: none; }
+.stop .sym b { font: 700 64px var(--font-display); font-stretch: 112%; line-height: .9; color: var(--mc); letter-spacing: -0.04em; }
+.stop .sym span { font: 600 22px var(--font-display); }
+.stop .sym small { font-family: var(--font-data); color: var(--muted); font-size: 12px; margin-left: auto; }
+.stop dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 14px 0 0; }
+.stop dl div.w { grid-column: 1 / -1; }
+.stop dt { font: 600 10.5px var(--font-label); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.stop dd { margin: 0; font-size: 14px; }
+.stop dd.n { font-family: var(--font-data); }
+.rail { position: absolute; right: var(--gutter-r); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+.rail span { font: 600 11px var(--font-data); color: var(--muted); display: flex; align-items: center; gap: 8px; transition: color .3s; }
+.rail span::after { content: ""; width: 18px; height: 2px; background: var(--line); transition: background .3s, width .3s; }
+.rail span.on { color: var(--ink); }
+.rail span.on::after { background: var(--rust); width: 34px; }
+.depth { position: absolute; right: var(--gutter-r); bottom: 32px; font: 500 12px var(--font-data); color: var(--muted); text-align: right; }
+.depth b { display: block; font: 600 28px var(--font-display); font-stretch: 112%; color: var(--ink); }
+@media (max-width: 640px) { .rail { display: none; } .cave-ui .card.stop { bottom: 96px; } }
+
+/* ---------- инструменты ---------- */
+.tools { scroll-margin-top: 70px; padding-block: 110px 64px; }
+.wrap { max-width: 1120px; margin: 0 auto; }
+.tools header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.tools h1 { font-family: var(--font-display); font-stretch: 112%; font-weight: 600; font-size: clamp(30px, 4.6vw, 48px); line-height: 1.02; margin: 0; letter-spacing: -0.03em; text-wrap: balance; }
+.tools h1 .acc { color: var(--rust); }
+.sub { margin: 8px 0 0; color: var(--muted); max-width: 52ch; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+.tab { font: 600 13px var(--font-body); padding: 8px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.tab:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: minmax(250px, 310px) minmax(0, 1fr); gap: 28px; margin-top: 24px; align-items: start; }
+@media (max-width: 800px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+.panel h2, .results h2 { font: 700 13px var(--font-label); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field label, .field .lab { font-weight: 500; font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
+.field output { font-family: var(--font-data); color: var(--rust); }
+select { font: inherit; padding: 8px 10px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); width: 100%; }
+input[type=range] { width: 100%; accent-color: var(--rust); }
+.hint { color: var(--muted); font-size: 12.5px; margin: 0; }
+.results { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.mat { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px 14px; background: var(--surface); border: 1px solid var(--line); padding: 14px 16px; align-items: center; }
+.mat.fail { background: transparent; border-style: dashed; }
+.rank { font: 700 26px var(--font-label); color: var(--rust); text-align: center; }
+.mat.fail .rank { color: var(--muted); font-size: 18px; }
+.mat h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.grp { margin: 0; color: var(--muted); font-size: 12.5px; }
+.score { font: 500 22px var(--font-data); text-align: right; }
+.score small { display: block; font: 600 10px var(--font-label); letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+.stats { grid-column: 2 / 4; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px 14px; margin: 0; }
+.stats div { min-width: 0; }
+.stats dt { font: 600 10.5px var(--font-label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.stats dd { margin: 0; font: 400 14px var(--font-data); font-variant-numeric: tabular-nums; }
+.bar { grid-column: 2 / 4; height: 6px; background: var(--rust-soft); position: relative; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--steel); }
+.bar b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--rust); left: 75%; }
+.fail-why { grid-column: 2 / 4; color: var(--bad); font-size: 13px; margin: 0; }
+.act { grid-column: 2 / 4; justify-self: start; font: 600 13px var(--font-label); letter-spacing: .06em; text-transform: uppercase; background: transparent; border: 1px solid var(--ink); color: var(--ink); padding: 6px 12px; cursor: pointer; }
+.act:hover { background: var(--ink); color: var(--bg); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 12.5px var(--font-body); padding: 6px 12px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; }
+.chip:hover { color: var(--ink); }
+.chip i { width: 10px; height: 10px; display: inline-block; border: 1px solid var(--muted); border-radius: 50%; }
+.chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.chip[aria-pressed="true"] i { border-color: transparent; }
+.plot { background: var(--surface); border: 1px solid var(--line); padding: 12px; }
+.plot svg { width: 100%; height: auto; display: block; }
+.plot text { font-family: var(--font-data); font-size: 11px; fill: var(--muted); }
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0; }
+.readout div { background: var(--surface); border: 1px solid var(--line); padding: 10px 14px; }
+.readout dt { font: 600 10.5px var(--font-label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.readout dd { margin: 2px 0 0; font: 500 20px var(--font-data); font-variant-numeric: tabular-nums; }
+.note { font-size: 12.5px; color: var(--muted); margin: 28px auto 0; max-width: 1120px; border-top: 1px solid var(--line); padding-top: 12px; }
+.note + .note { margin-top: 12px; }
+@media (prefers-reduced-motion: no-preference) { .bar i { transition: width .25s ease; } }
+textarea { font: inherit; padding: 10px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); width: 100%; resize: vertical; }
+textarea:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.go { font: 700 14px var(--font-body); background: var(--rust); color: #140804; border: 0; border-radius: 999px; padding: 11px 20px; cursor: pointer; }
+.go:disabled { opacity: .55; cursor: default; }
+.row .act, .btns .act { grid-column: auto; }
+.btns { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 8px; }
+.why { grid-column: 2 / 4; margin: 0; }
+.mat .note2 { grid-column: 2 / 4; margin: 0; color: var(--muted); font-size: 13px; }
+.summary { margin: 0; font-size: 16px; max-width: 65ch; }
+.badge { display: inline-block; font: 600 10.5px var(--font-label); letter-spacing: .1em; text-transform: uppercase; color: var(--rust); border: 1px solid var(--rust); padding: 4px 10px; }
+.cond { margin: 0; font-family: var(--font-data); font-size: 13px; color: var(--muted); }
+.tips { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.avoid { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.avoid b { color: var(--bad); font-weight: 600; }
+.tbl { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font: 600 11px var(--font-label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td:nth-child(2), td:nth-child(3) { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: 0; }
+
+/* ---------- батарея: витрина «банок» ---------- */
+.bwrap { display: flex; flex-direction: column; gap: 14px; margin-top: 24px; }
+.bstage { position: relative; overflow: hidden; min-height: 420px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 36px 20px 28px;
+  background: radial-gradient(70% 90% at 50% 120%, rgba(0,0,0,.55), transparent 60%), linear-gradient(115deg, var(--ca) 0%, color-mix(in srgb, var(--ca) 35%, #0a0c0d) 46%, color-mix(in srgb, var(--cb) 35%, #0a0c0d) 54%, var(--cb) 100%); }
+.bghost { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 800 clamp(110px, 26vw, 300px) var(--font-display); font-stretch: 125%; letter-spacing: -0.05em; color: transparent; -webkit-text-stroke: 1.5px rgba(255,255,255,.22); white-space: nowrap; pointer-events: none; user-select: none; }
+.bside { display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; }
+.bside .role { font: 600 12px var(--font-label); letter-spacing: .14em; text-transform: uppercase; color: #fff; background: rgba(0,0,0,.4); padding: 5px 12px; border-radius: 999px; }
+.bside .nm { font: 600 15px var(--font-display); color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
+.bmid { position: relative; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.volt { font: 700 clamp(48px, 9vw, 112px) var(--font-display); font-stretch: 115%; letter-spacing: -0.04em; line-height: .95; color: #fff; text-shadow: 0 4px 30px rgba(0,0,0,.45); font-variant-numeric: tabular-nums; }
+.volt-l { font: 600 11px var(--font-label); letter-spacing: .16em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+.swap { margin-top: 10px; font: 600 12px var(--font-body); color: #fff; background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.halfline { position: relative; grid-column: 1 / -1; text-align: center; font-family: var(--font-data); font-size: 13px; color: #fff; margin: 0; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+.bwarn { position: relative; grid-column: 1 / -1; justify-self: center; text-align: center; margin: 0; color: #fff; background: rgba(0,0,0,.55); padding: 8px 14px; font-size: 13px; }
+.bwarn:empty { display: none; }
+@media (max-width: 640px) { .bstage { grid-template-columns: 1fr 1fr; } .bmid { grid-column: 1 / -1; order: -1; } }
+/* банка: цилиндр из градиентов */
+.can { --c: #888; position: relative; width: 112px; height: 210px; border-radius: 16px / 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 45%, #000) 0%, var(--c) 22%, color-mix(in srgb, var(--c) 55%, #fff) 38%, var(--c) 52%, color-mix(in srgb, var(--c) 60%, #000) 100%);
+  box-shadow: 0 24px 40px -18px rgba(0,0,0,.7), inset 0 -10px 18px rgba(0,0,0,.25); border: 0; }
+.can::before { content: ""; position: absolute; left: 6px; right: 6px; top: -7px; height: 16px; border-radius: 50%; background: linear-gradient(180deg, #e9ecef, #8d949b); box-shadow: inset 0 -3px 4px rgba(0,0,0,.3); }
+.can .sym { font: 800 46px var(--font-display); font-stretch: 112%; letter-spacing: -0.03em; text-shadow: 0 2px 10px rgba(0,0,0,.45); }
+.can .e { font: 500 12px var(--font-data); background: rgba(0,0,0,.4); padding: 2px 8px; border-radius: 999px; }
+.bside .can { width: clamp(96px, 14vw, 132px); height: clamp(180px, 26vw, 250px); }
+@media (prefers-reduced-motion: no-preference) {
+  .bside .can { animation: bob 4s ease-in-out infinite; }
+  #bigCat { animation-delay: -2s; }
+}
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+.picker { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--surface); }
+.seg button { font: 600 13px var(--font-body); padding: 7px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.shelf { display: flex; gap: 14px; overflow-x: auto; padding: 30px 6px 14px; scroll-snap-type: x proximity; }
+.shelf .can { flex: 0 0 auto; width: 62px; height: 112px; cursor: pointer; scroll-snap-align: start; transition: transform .2s ease, opacity .2s; opacity: .8; }
+.shelf .can .sym { font-size: 24px; }
+.shelf .can .e { font-size: 10px; padding: 2px 7px; }
+.shelf .can:hover { transform: translateY(-6px); opacity: 1; }
+.shelf .can.is-an, .shelf .can.is-cat { opacity: 1; transform: translateY(-8px); outline: 2px solid #fff; outline-offset: 4px; }
+.shelf .can .tag { position: absolute; top: -28px; font: 700 12px var(--font-data); color: var(--bg); background: var(--ink); border-radius: 999px; padding: 3px 10px; }
+details.more { background: var(--surface); border: 1px solid var(--line); }
+details.more summary { cursor: pointer; padding: 14px 18px; font: 600 13px var(--font-label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+details.more[open] summary { border-bottom: 1px solid var(--line); }
+.more-in { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 24px; padding: 18px; }
+@media (max-width: 800px) { .more-in { grid-template-columns: minmax(0, 1fr); } }
+.more-in .panel { padding: 0; border: 0; background: transparent; }
+</style>
+</head>
+<body>
+
+
+<nav class="topnav" aria-label="Main">
+  <a class="brand" href="#home"><i></i><span data-i="brand"></span></a>
+  <div class="links">
+    <a href="#home" data-i="nav_home"></a>
+    <a href="#cave" data-i="nav_cave"></a>
+    <a href="#tools" data-go="ai" data-i="tab_ai"></a>
+    <a href="#tools" data-go="sel" data-i="tab_sel"></a>
+    <a href="#tools" data-go="sim" data-i="tab_sim"></a>
+    <a href="#tools" data-go="bat" data-i="tab_bat"></a>
+  </div>
+  <div class="navr">
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" id="lang-ru" aria-pressed="true">RU</button>
+      <button type="button" id="lang-en" aria-pressed="false">EN</button>
+    </div>
+    <a class="pill sm" href="#tools" data-go="ai"><span data-i="cta"></span><b>↗</b></a>
+  </div>
+</nav>
+
+<section class="hero" id="home">
+  <canvas id="heroCanvas" aria-hidden="true"></canvas>
+  <div class="hero-in gutter">
+    <div>
+      <p class="eyebrow" data-i="hero_eyebrow"></p>
+      <h1><span data-i="hero_h1"></span><span data-i="hero_h2"></span></h1>
+      <p class="lead" data-i="hero_sub"></p>
+      <div class="ctas">
+        <a class="pill" href="#cave"><span data-i="hero_b1"></span><b>↓</b></a>
+        <a class="pill ghost" href="#tools" data-go="ai" data-i="hero_b2"></a>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div><b>6</b><span data-i="hero_s1"></span></div>
+      <div><b>11</b><span data-i="hero_s2"></span></div>
+      <div><b>4</b><span data-i="hero_s3"></span></div>
+    </div>
+  </div>
+</section>
+
+<section class="cave" id="cave">
+  <div class="cave-sticky">
+    <div class="cave-fallback"></div>
+    <canvas id="caveCanvas" aria-hidden="true"></canvas>
+    <div class="cave-ui">
+      <div class="card intro on" id="caveIntro">
+        <h2 data-i="cave_h"></h2>
+        <p data-i="cave_p"></p>
+        <span class="scroll-hint" data-i="cave_hint"></span>
+      </div>
+      <div id="stops"></div>
+      <div class="card outro" id="caveOutro">
+        <h2 data-i="cave_end_h"></h2>
+        <p data-i="cave_end_p"></p>
+        <a class="pill" href="#tools" data-go="sel"><span data-i="cave_end_b"></span><b>→</b></a>
+      </div>
+      <div class="rail" id="rail"></div>
+      <div class="depth"><b id="depthM">0 m</b><span data-i="depth"></span></div>
+    </div>
+  </div>
+</section>
+
+<section class="tools gutter" id="tools">
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span id="h1a"></span> <span id="h1b" class="acc"></span></h1>
+      <p class="sub" id="hsub"></p>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-ai" aria-selected="true" aria-controls="p-ai" data-i="tab_ai"></button>
+      <button class="tab" role="tab" id="tab-sel" aria-selected="false" aria-controls="p-sel" data-i="tab_sel"></button>
+      <button class="tab" role="tab" id="tab-sim" aria-selected="false" aria-controls="p-sim" data-i="tab_sim"></button>
+      <button class="tab" role="tab" id="tab-bat" aria-selected="false" aria-controls="p-bat" data-i="tab_bat"></button>
+    </div>
+  </header>
+
+  <section id="p-ai" role="tabpanel" aria-labelledby="tab-ai">
+    <div class="grid">
+      <form class="panel" id="aiForm">
+        <h2 data-i="h_task"></h2>
+        <div class="field"><label for="task" data-i="l_task"></label>
+          <textarea id="task" rows="5" data-ip="ph_task"></textarea></div>
+        <div class="field"><span class="lab" data-i="l_examples"></span><div class="chips" id="examples"></div></div>
+        <div class="row"><button class="go" id="ask" type="submit" data-i="b_ask"></button><button class="act" id="stop" type="button" hidden data-i="b_stop"></button></div>
+        <p class="hint" id="aiStatus"></p>
+      </form>
+      <div class="results" id="aiOut"></div>
+    </div>
+  </section>
+
+  <section id="p-sel" role="tabpanel" aria-labelledby="tab-sel" hidden>
+    <div class="grid">
+      <form class="panel" onsubmit="return false">
+        <h2 data-i="h_cond"></h2>
+        <div class="field"><label for="env" data-i="l_env"></label><select id="env"></select><p class="hint" id="envHint"></p></div>
+        <div class="field"><label for="temp"><span id="tempLab"></span> <output id="tempo"></output></label><input id="temp" type="range" min="-30" max="90" step="1" value="15"></div>
+        <div class="field" id="rhField"><label for="rh"><span data-i="l_rh"></span> <output id="rho"></output></label><input id="rh" type="range" min="0" max="100" step="1" value="80"></div>
+        <div class="field"><span class="lab"><span data-i="l_mult"></span> <output id="multo"></output></span><p class="hint" id="climHint"></p></div>
+        <div class="field"><label for="cur" data-i="l_cur"></label><select id="cur"></select></div>
+        <div class="field"><label for="t0"><span data-i="l_t0"></span> <output id="t0o"></output></label><input id="t0" type="range" min="1" max="30" step="0.5" value="6"></div>
+        <div class="field"><label for="life"><span data-i="l_life"></span> <output id="lifeo"></output></label><input id="life" type="range" min="1" max="100" step="1" value="25"></div>
+        <div class="field"><label for="ymin"><span data-i="l_ymin"></span> <output id="ymino"></output></label><input id="ymin" type="range" min="0" max="900" step="10" value="200"></div>
+        <div class="field"><label for="rmax"><span data-i="l_rmax"></span> <output id="rmaxo"></output></label><input id="rmax" type="range" min="1.5" max="10" step="0.1" value="10"></div>
+        <div class="field"><label for="prot" data-i="l_prot"></label><select id="prot"></select></div>
+        <h2 data-i="h_weights"></h2>
+        <div class="field"><label for="wc"><span data-i="l_wc"></span> <output id="wco"></output></label><input id="wc" type="range" min="0" max="5" step="1" value="3"></div>
+        <div class="field"><label for="ww"><span data-i="l_ww"></span> <output id="wwo"></output></label><input id="ww" type="range" min="0" max="5" step="1" value="2"></div>
+        <div class="field"><label for="wd"><span data-i="l_wd"></span> <output id="wdo"></output></label><input id="wd" type="range" min="0" max="5" step="1" value="3"></div>
+      </form>
+      <div class="results">
+        <h2 id="resTitle"></h2>
+        <div id="list" style="display:flex;flex-direction:column;gap:12px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="p-sim" role="tabpanel" aria-labelledby="tab-sim" hidden>
+    <div class="grid">
+      <div class="panel">
+        <h2 data-i="h_params"></h2>
+        <div class="field"><label for="yr"><span data-i="l_yr"></span> <output id="yro"></output></label><input id="yr" type="range" min="0" max="50" step="1" value="25"></div>
+        <div class="field"><label for="focus" data-i="l_focus"></label><select id="focus"></select></div>
+        <div class="field"><span class="lab" data-i="l_compare"></span><div class="chips" id="chips"></div></div>
+        <p class="hint" data-i="sim_hint"></p>
+      </div>
+      <div class="results">
+        <h2 id="simTitle"></h2>
+        <div class="plot"><svg id="cross" viewBox="0 0 640 190" role="img" data-ia="aria_cross"></svg></div>
+        <dl class="readout" id="readout"></dl>
+        <h2 data-i="h_remain"></h2>
+        <div class="plot"><svg id="chart" viewBox="0 0 640 320" role="img" data-ia="aria_chart"></svg></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="p-bat" role="tabpanel" aria-labelledby="tab-bat" hidden>
+    <div class="bwrap">
+      <div class="bstage" id="bStage">
+        <div class="bghost" id="bGhost" aria-hidden="true"></div>
+        <div class="bside"><span class="role" data-i="slot_an"></span><div class="can" id="bigAn"></div><span class="nm" id="nmAn"></span></div>
+        <div class="bmid">
+          <div class="volt" id="bVolt"></div>
+          <div class="volt-l" data-i="b_volt"></div>
+          <button class="swap" type="button" id="bSwap" data-i="b_swap"></button>
+        </div>
+        <div class="bside"><span class="role" data-i="slot_cat"></span><div class="can" id="bigCat"></div><span class="nm" id="nmCat"></span></div>
+        <p class="halfline" id="bHalf"></p>
+        <p class="bwarn" id="bWarn"></p>
+      </div>
+      <div class="picker">
+        <div class="seg" role="group" data-ia="b_pick">
+          <button type="button" id="slotAn" aria-pressed="true" data-i="slot_an"></button>
+          <button type="button" id="slotCat" aria-pressed="false" data-i="slot_cat"></button>
+        </div>
+        <div class="chips" id="bPresets"></div>
+      </div>
+      <div class="shelf" id="shelf"></div>
+      <dl class="readout" id="bKey"></dl>
+      <div class="plot"><svg id="bChart" viewBox="0 0 640 320" role="img" data-ia="aria_dis"></svg></div>
+      <details class="more">
+        <summary data-i="b_more"></summary>
+        <div class="more-in">
+          <form class="panel" onsubmit="return false">
+            <div class="field"><label for="bCan"><span data-i="l_can"></span> <output id="bCano"></output></label><input id="bCan" type="range" min="-3" max="0.3" step="0.1" value="0"></div>
+            <div class="field"><label for="bCcat"><span data-i="l_ccat"></span> <output id="bCcato"></output></label><input id="bCcat" type="range" min="-3" max="0.3" step="0.1" value="0"></div>
+            <div class="field"><label for="bT"><span data-i="l_bT"></span> <output id="bTo"></output></label><input id="bT" type="range" min="0" max="80" step="1" value="25"></div>
+            <div class="field"><label for="bV"><span data-i="l_bV"></span> <output id="bVo"></output></label><input id="bV" type="range" min="10" max="1000" step="10" value="100"></div>
+            <div class="field"><label for="bM"><span data-i="l_bM"></span> <output id="bMo"></output></label><input id="bM" type="range" min="0.5" max="50" step="0.5" value="5"></div>
+            <div class="field"><label for="bR"><span data-i="l_bR"></span> <output id="bRo"></output></label><input id="bR" type="range" min="0" max="4" step="0.05" value="2"></div>
+            <div class="field"><label for="bRi"><span data-i="l_bRi"></span> <output id="bRio"></output></label><input id="bRi" type="range" min="0.5" max="100" step="0.5" value="5"></div>
+            <div class="field"><label for="bN"><span data-i="l_bN"></span> <output id="bNo"></output></label><input id="bN" type="range" min="1" max="6" step="1" value="1"></div>
+          </form>
+          <div class="results">
+            <dl class="readout" id="bRead"></dl>
+            <h2 data-i="h_cmp"></h2>
+            <div class="tbl"><table>
+              <thead><tr><th data-i="th_type"></th><th data-i="th_v"></th><th data-i="th_e"></th><th data-i="th_where"></th></tr></thead>
+              <tbody id="bTable"></tbody>
+            </table></div>
+            <p class="hint" data-i="bat_tbl_note"></p>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+</div>
+<p class="note" data-i="note_cave"></p>
+<p class="note" data-i="note_bat"></p>
+<p class="note" data-i="note_corr"></p>
+</section>
+
+<script>
+/* ---------- Язык ---------- */
+let LANG = 'ru';
+try { if (localStorage.getItem('lang') === 'en') LANG = 'en'; } catch (e) {}
+const LOC = () => LANG === 'en' ? 'en-US' : 'ru-RU';
+const L = o => (o && typeof o === 'object') ? (o[LANG] ?? o.ru) : o;
+const T = {
+  ru: {
+    h1_ai_off: ['Помощник по', 'материалам'], sub_ai_off: 'Опиши, для чего нужен материал, и сайт подберёт подходящие варианты.',
+    off_idle: 'Сайт ищет в описании знакомые слова (робот, море, ванная, мост, улица…) и подбирает материалы по своей базе.',
+    off_title: 'Подбор по описанию', off_sum: 'Нужен срок службы от {life} лет при толщине {t0} мм.',
+    off_none_sum: 'Знакомых слов не нашлось, поэтому взяты условия городской улицы. Уточни, где будет деталь: дома, на улице, у моря, в воде.',
+    off_why: 'Балл {score} из 100 по цене, весу и стойкости.', off_note: 'Ржавчина съест четверть толщины через: {y}.',
+    off_foot: 'Это подбор по правилам сайта: условия угадываются по словам в описании, а материалы ранжируются так же, как во вкладке «Подбор».',
+    tip_light: 'Для подвижных конструкций важен вес: облегчай детали отверстиями.',
+    tip_sea: 'Морская вода и солевой туман — худшая среда: бери нержавейку 316 или титан, а сталь только с катодной защитой.',
+    tip_wet: 'При влажности выше 80% на металле конденсат: нужна нержавейка, алюминий или покраска.',
+    tip_acid: 'В кислоте большинство металлов растворяются быстро: смотри на титан и нержавейку 316.',
+    tip_water: 'В пресной воде сталь заметно ржавеет: поможет краска или цинкование.',
+    tip_struct: 'Для несущих конструкций главное — прочность: проверь предел текучести и заложи запас толщины на коррозию.',
+    tip_out: 'На улице большие перепады температур, а зимой на дорогах соль: защищай сталь краской или цинком.',
+    tip_in: 'В сухом помещении коррозия почти не важна, решают цена и вес.',
+    tip_default: 'Чем подробнее опишешь, где будет деталь, тем точнее подбор.',
+    tip_tune: 'Хочешь точнее? Нажми «Открыть в подборе» и поменяй условия вручную.',
+    brand: 'Материал и коррозия', nav_home: 'Главная', nav_cave: 'Шахта', cta: 'Начать',
+    hero_eyebrow: 'Химия · инженерия · Казахстан', hero_h1: 'Металл изнутри:', hero_h2: 'от руды до батареи',
+    hero_sub: 'Спустись в шахту к рудам Казахстана, подбери материал под задачу, посмотри, как он ржавеет, и собери свою батарею.',
+    hero_b1: 'Спуститься в шахту', hero_b2: 'Инструменты', hero_s1: 'металлов в шахте', hero_s2: 'материалов', hero_s3: 'инструмента',
+    cave_h: 'Спускаемся под землю', cave_p: 'Впереди шесть металлов, которые добывают и выплавляют в Казахстане.', cave_hint: 'ЛИСТАЙ ВНИЗ ↓',
+    cave_end_h: 'Выход на поверхность', cave_end_p: 'Теперь подбери материал под свою задачу.', cave_end_b: 'К инструментам', depth: 'глубина',
+    st_dens: 'Плотность', st_melt: 'Плавится', st_kz: 'В Казахстане', st_use: 'Где нужен',
+    tab_ai: 'Помощник', tab_sel: 'Подбор', tab_sim: 'Симулятор', tab_bat: 'Батарея',
+    h1_ai: ['ИИ-помощник по', 'материалам'], h1_sel: ['Подбор', 'материала'], h1_sim: ['Симулятор', 'коррозии'], h1_bat: ['Гальванический', 'элемент'],
+    sub_ai: 'Опиши, для чего нужен материал, и ИИ предложит варианты с толщиной и сроком службы.',
+    sub_sel: 'Задай среду, климат и требования и получи рейтинг материалов по цене, весу и стойкости.',
+    sub_sim: 'Посмотри, как материал теряет толщину от коррозии год за годом.',
+    sub_bat: 'Выбери два металла и узнай, какое напряжение даст батарея.',
+    h_task: 'Задача', l_task: 'Для чего нужен материал?', l_examples: 'Примеры',
+    ph_task: 'Например: рама drivetrain для робота FTC, удары о борта поля, сезон соревнований',
+    b_ask: 'Подобрать материал', b_stop: 'Стоп',
+    ai_idle: 'ИИ предложит материал, толщину и срок службы. Плотность, цены и расчёт коррозии берутся из базы сайта.',
+    ai_off_view: 'ИИ-помощник работает, когда страница открыта в Claude. Ниже пример ответа, а остальные вкладки работают и без ИИ.',
+    ai_empty_task: 'Напиши, для чего нужен материал, или выбери пример.',
+    ai_thinking: 'Думаю… обычно это 10–40 секунд.', ai_done: 'Готово. Можно открыть вариант в подборе или симуляторе.', ai_stopped: 'Остановлено.',
+    ai_off: 'ИИ недоступен в этом просмотре. Остальные вкладки работают без него.',
+    err_rate_limited: 'Слишком много запросов. Попробуй через минуту.',
+    err_invalid_json: 'Ответ пришёл в неверном формате. Нажми «Подобрать материал» ещё раз.',
+    err_refused: 'ИИ не стал отвечать на этот запрос. Переформулируй задачу.',
+    err_empty_completion: 'ИИ ничего не ответил. Опиши задачу подробнее.',
+    err_session_expired: 'Сессия истекла. Войди в Claude заново.',
+    err_other: 'Не получилось связаться с ИИ. Попробуй ещё раз.',
+    ai_example: 'Пример ответа', ai_example_for: 'для задачи «{x}»', ai_rec: 'Рекомендация ИИ', ai_cond: 'Условия',
+    ai_none: 'ИИ не нашёл подходящих материалов в базе. Попробуй описать задачу подробнее.',
+    ai_avoid: 'Не советую', ai_tips: 'Советы',
+    ai_foot: 'Срок службы оценивает ИИ с учётом износа и нагрузок. Колонка «Коррозия −25%» посчитана моделью сайта: через сколько лет ржавчина съест четверть толщины.',
+    s_life: 'срок службы', s_thick: 'Толщина', s_density: 'Плотность', s_mass: 'Масса', s_cost_m2: 'Цена за м²', s_cost_kg: 'Цена за кг', s_est: ' (оценка)',
+    s_corr25: 'Коррозия −25%', s_loss: 'Потеря', s_tolimit: 'До предела', s_score: 'балл', s_yield: 'σт',
+    b_apply: 'Открыть в подборе', b_sim: 'Смоделировать',
+    h_cond: 'Условия', l_env: 'Среда', l_temp_air: 'Температура воздуха', l_temp_water: 'Температура воды', l_rh: 'Влажность воздуха',
+    l_mult: 'Множитель скорости коррозии', l_cur: 'Валюта', cur_kzt: 'Тенге (₸)', cur_usd: 'Доллары ($)', cur_eur: 'Евро (€)',
+    l_t0: 'Толщина детали', l_life: 'Срок службы', l_ymin: 'Мин. предел текучести', l_rmax: 'Макс. плотность', l_prot: 'Защита',
+    h_weights: 'Что важнее', l_wc: 'Цена', l_ww: 'Лёгкость', l_wd: 'Стойкость к коррозии',
+    res_title: 'Рейтинг: подходит {ok} из {all}',
+    n_lowrh: 'Ниже 60% на металле почти нет плёнки влаги, коррозия идёт очень медленно.',
+    n_highrh: 'Выше 80% возможен конденсат, коррозия резко ускоряется.',
+    n_freeze: 'Ниже 0 °C влага замерзает, скорость падает.', n_hot: 'Высокая температура ускоряет все химические реакции.',
+    n_typical: 'Типичные условия для этой среды: {c} (множитель ×1).',
+    why_yield: 'предел текучести {y} МПа ниже требуемого', why_rho: 'плотность {r} выше допустимой', why_corr: 'за {l} лет теряет {p}% толщины (предел 25%)',
+    u_mm: 'мм', u_yr: 'лет', u_mpa: 'МПа', u_gcm3: 'г/см³', u_um: 'мкм', u_kgm2: 'кг/м²', u_umy: 'мкм/год', gt200: '> 200 лет', u_m: 'м',
+    h_params: 'Параметры', l_yr: 'Время', l_focus: 'Главный материал', l_compare: 'Сравнить с',
+    sim_hint: 'Среда, температура, влажность, толщина и защита берутся из вкладки «Подбор».',
+    sim_title: 'Сечение: {e}', h_remain: 'Остаток толщины', x_orig: 'исходная толщина', r_lost: 'Потеряно', r_left: 'Осталось',
+    r_to25: 'До потери 25%', r_climate: 'Климат', r_rate: 'Скорость сейчас', ax_years: 'годы', ax_limit: 'предел −25%',
+    aria_cross: 'Сечение пластины после коррозии', aria_chart: 'График остаточной толщины от времени', aria_dis: 'График напряжения при разряде',
+    slot_an: 'Анод −', slot_cat: 'Катод +', b_pick: 'Что выбираю', b_swap: '⇄ Поменять', b_volt: 'напряжение элемента',
+    b_more: 'Точные настройки и расчёты',
+    l_can: 'Концентрация у анода', l_ccat: 'Концентрация у катода', l_bT: 'Температура',
+    l_bV: 'Объём раствора в стакане', l_bM: 'Масса анода', l_bR: 'Сопротивление нагрузки', l_bRi: 'Внутреннее сопротивление', l_bN: 'Элементов последовательно',
+    h_cmp: 'Сравни с настоящими аккумуляторами',
+    th_type: 'Тип', th_v: 'Напряжение', th_e: 'Энергия, Вт·ч/кг', th_where: 'Где встречается',
+    bat_tbl_note: 'Типичные значения. Числа в таблице считаются на весь аккумулятор, а энергия выше относится только к теоретическому элементу из стаканов с раствором.',
+    w_same: 'Анод и катод одинаковые: напряжения нет.',
+    w_swap: 'У анода потенциал должен быть ниже. Нажми «Поменять».',
+    w_water: '{m} бурно реагирует с водой: в настоящих литиевых батареях электролит органический.',
+    nocur: 'Элемент не даёт тока', ax_time: 'время',
+    u_min: 'мин', u_h: 'ч', u_day: 'сут', u_M: 'М', u_mM: 'мМ', u_ohm: 'Ом', u_kohm: 'кОм', u_ml: 'мл', u_g: 'г', u_V: 'В',
+    u_mA: 'мА', u_mW: 'мВт', u_mAh: 'мА·ч', u_Wh: 'Вт·ч', u_kJ: 'кДж', u_mAhg: 'мА·ч/г',
+    rb_e0: 'E° элемента', rb_e: 'E по Нернсту', rb_dg: 'ΔG° = −nFE°', rb_n: 'Электронов n', rb_i0: 'Ток', rb_p: 'Мощность',
+    rb_half: 'Проработает', rb_cap: 'Ёмкость', rb_en: 'Энергия', rb_spec: 'Ёмкость анода',
+    note_cave: 'Шахта: плотность и температура плавления — справочные значения для чистых металлов. Места добычи и выплавки — крупнейшие в Казахстане, список не полный. Текстуры: скала Cliff Side (Poly Haven), металлы Metal053B, 058A, 060C, 051A, 059B, 048C (ambientCG), все CC0.',
+    note_bat: 'Батарея: стандартные электродные потенциалы при 25 °C, напряжение по уравнению Нернста E = E° − (RT/nF)·ln Q, разряд моделируется расходом ионов у катода и металла анода. Цвета банок взяты из окраски пламени или растворов солей металла. Это та же электрохимия, что и у коррозии: металл с более низким потенциалом окисляется, поэтому цинк защищает сталь.',
+    note_corr: 'Скорости коррозии приблизительные, по порядку величин из справочников и стандартов серии ISO 9223–9226 (потеря толщины за первый год, закон d = k·tⁿ). Для учебного проекта, не для расчёта реальных конструкций. Предельной считается потеря 25% толщины. Нержавейки в морской среде могут разрушаться питтингом, который простая модель не показывает. Влияние климата: скорость растёт примерно вдвое на каждые +20 °C, а в атмосфере зависит от влажности (ниже 60% коррозия почти стоит, выше 80% резко ускоряется из-за плёнки влаги на металле). Цены: диапазон для листа или плиты, оценка по рынку на начало ноября 2026 (биржа LME для Al, Cu, Zn, индексы горячекатаного проката, прайсы поставщиков нержавейки и титана). Цена магния — грубая оценка. Курс Нацбанка РК на 03.11.2026: 1 $ = 453,64 ₸, 1 € = 508,17 ₸. Реальная цена зависит от толщины, объёма партии и доставки.'
+  },
+  en: {
+    h1_ai_off: ['Material', 'helper'], sub_ai_off: 'Describe what the material is for and the site picks suitable options.',
+    off_idle: 'The site looks for familiar words in your description (robot, sea, bathroom, bridge, street…) and picks materials from its database.',
+    off_title: 'Matched from your description', off_sum: 'Needs a service life of at least {life} years at {t0} mm thickness.',
+    off_none_sum: 'No familiar words found, so city-street conditions were used. Say where the part will be: indoors, outdoors, by the sea, in water.',
+    off_why: 'Score {score} of 100 for cost, weight and durability.', off_note: 'Rust eats a quarter of the thickness in: {y}.',
+    off_foot: 'This is the site\'s rule-based match: conditions are guessed from words in the description, and materials are ranked the same way as in the Selector tab.',
+    tip_light: 'Moving structures need low weight: lighten parts with holes.',
+    tip_sea: 'Seawater and salt spray are the harshest environment: use stainless 316 or titanium, and steel only with cathodic protection.',
+    tip_wet: 'Above 80% humidity water condenses on metal: use stainless steel, aluminium or paint.',
+    tip_acid: 'Most metals dissolve quickly in acid: look at titanium and stainless 316.',
+    tip_water: 'Steel rusts noticeably in fresh water: paint or galvanising helps.',
+    tip_struct: 'For load-bearing structures strength comes first: check yield strength and add a corrosion allowance to the thickness.',
+    tip_out: 'Outdoors there are big temperature swings and road salt in winter: protect steel with paint or zinc.',
+    tip_in: 'In a dry room corrosion barely matters; cost and weight decide.',
+    tip_default: 'The more you say about where the part will be, the better the match.',
+    tip_tune: 'Want more precision? Press "Open in Selector" and adjust the conditions yourself.',
+    brand: 'Material & Corrosion', nav_home: 'Home', nav_cave: 'Mine', cta: 'Start',
+    hero_eyebrow: 'Chemistry · engineering · Kazakhstan', hero_h1: 'Metal from within:', hero_h2: 'from ore to battery',
+    hero_sub: 'Go down a mine to Kazakhstan\'s ores, pick a material for your task, watch it corrode and build your own battery.',
+    hero_b1: 'Go underground', hero_b2: 'Tools', hero_s1: 'metals in the mine', hero_s2: 'materials', hero_s3: 'tools',
+    cave_h: 'Going underground', cave_p: 'Six metals mined and smelted in Kazakhstan lie ahead.', cave_hint: 'SCROLL DOWN ↓',
+    cave_end_h: 'Back to the surface', cave_end_p: 'Now pick a material for your own task.', cave_end_b: 'To the tools', depth: 'depth',
+    st_dens: 'Density', st_melt: 'Melts at', st_kz: 'In Kazakhstan', st_use: 'Used for',
+    tab_ai: 'Advisor', tab_sel: 'Selector', tab_sim: 'Simulator', tab_bat: 'Battery',
+    h1_ai: ['Material', 'advisor'], h1_sel: ['Material', 'selector'], h1_sim: ['Corrosion', 'simulator'], h1_bat: ['Galvanic', 'cell'],
+    sub_ai: 'Describe what the material is for and the AI suggests options with thickness and service life.',
+    sub_sel: 'Set the environment, climate and requirements to rank materials by cost, weight and durability.',
+    sub_sim: 'See how a material loses thickness to corrosion year by year.',
+    sub_bat: 'Pick two metals and see what voltage the battery gives.',
+    h_task: 'Task', l_task: 'What is the material for?', l_examples: 'Examples',
+    ph_task: 'For example: drivetrain frame for an FTC robot, hits against the field walls, one competition season',
+    b_ask: 'Find a material', b_stop: 'Stop',
+    ai_idle: 'The AI suggests a material, thickness and service life. Density, prices and corrosion come from the site\'s own data.',
+    ai_off_view: 'The AI advisor works when this page is opened in Claude. Below is a sample answer; the other tabs work without AI.',
+    ai_empty_task: 'Describe what the material is for, or pick an example.',
+    ai_thinking: 'Thinking… usually 10–40 seconds.', ai_done: 'Done. Open an option in the Selector or the Simulator.', ai_stopped: 'Stopped.',
+    ai_off: 'The AI isn\'t available in this view. The other tabs work without it.',
+    err_rate_limited: 'Too many requests. Try again in a minute.',
+    err_invalid_json: 'The answer came back in the wrong format. Press "Find a material" again.',
+    err_refused: 'The AI declined this request. Rephrase the task.',
+    err_empty_completion: 'The AI returned nothing. Describe the task in more detail.',
+    err_session_expired: 'Your session expired. Sign in to Claude again.',
+    err_other: 'Couldn\'t reach the AI. Try again.',
+    ai_example: 'Sample answer', ai_example_for: 'for the task "{x}"', ai_rec: 'AI recommendation', ai_cond: 'Conditions',
+    ai_none: 'No suitable materials found in the database. Try describing the task in more detail.',
+    ai_avoid: 'Avoid', ai_tips: 'Tips',
+    ai_foot: 'Service life is the AI\'s estimate, including wear and loads. "Corrosion −25%" comes from the site\'s model: the years until rust eats a quarter of the thickness.',
+    s_life: 'service life', s_thick: 'Thickness', s_density: 'Density', s_mass: 'Mass', s_cost_m2: 'Cost per m²', s_cost_kg: 'Cost per kg', s_est: ' (estimate)',
+    s_corr25: 'Corrosion −25%', s_loss: 'Loss', s_tolimit: 'To limit', s_score: 'score', s_yield: 'σy',
+    b_apply: 'Open in Selector', b_sim: 'Simulate',
+    h_cond: 'Conditions', l_env: 'Environment', l_temp_air: 'Air temperature', l_temp_water: 'Water temperature', l_rh: 'Relative humidity',
+    l_mult: 'Corrosion rate multiplier', l_cur: 'Currency', cur_kzt: 'Tenge (₸)', cur_usd: 'US dollars ($)', cur_eur: 'Euro (€)',
+    l_t0: 'Part thickness', l_life: 'Service life', l_ymin: 'Min. yield strength', l_rmax: 'Max. density', l_prot: 'Protection',
+    h_weights: 'Priorities', l_wc: 'Cost', l_ww: 'Low weight', l_wd: 'Corrosion resistance',
+    res_title: 'Ranking: {ok} of {all} fit',
+    n_lowrh: 'Below 60% there is almost no moisture film on the metal, so corrosion is very slow.',
+    n_highrh: 'Above 80% condensation is possible and corrosion speeds up sharply.',
+    n_freeze: 'Below 0 °C moisture freezes and the rate drops.', n_hot: 'High temperature speeds up every chemical reaction.',
+    n_typical: 'Typical conditions for this environment: {c} (multiplier ×1).',
+    why_yield: 'yield strength {y} MPa is below the requirement', why_rho: 'density {r} is above the limit', why_corr: 'loses {p}% of thickness in {l} years (limit 25%)',
+    u_mm: 'mm', u_yr: 'yr', u_mpa: 'MPa', u_gcm3: 'g/cm³', u_um: 'µm', u_kgm2: 'kg/m²', u_umy: 'µm/yr', gt200: '> 200 yr', u_m: 'm',
+    h_params: 'Parameters', l_yr: 'Time', l_focus: 'Main material', l_compare: 'Compare with',
+    sim_hint: 'Environment, temperature, humidity, thickness and protection come from the Selector tab.',
+    sim_title: 'Cross-section: {e}', h_remain: 'Remaining thickness', x_orig: 'original thickness', r_lost: 'Lost', r_left: 'Remaining',
+    r_to25: 'Until 25% loss', r_climate: 'Climate', r_rate: 'Current rate', ax_years: 'years', ax_limit: 'limit −25%',
+    aria_cross: 'Plate cross-section after corrosion', aria_chart: 'Remaining thickness over time', aria_dis: 'Voltage during discharge',
+    slot_an: 'Anode −', slot_cat: 'Cathode +', b_pick: 'What I am picking', b_swap: '⇄ Swap', b_volt: 'cell voltage',
+    b_more: 'Detailed settings and numbers',
+    l_can: 'Anode-side concentration', l_ccat: 'Cathode-side concentration', l_bT: 'Temperature',
+    l_bV: 'Solution volume per beaker', l_bM: 'Anode mass', l_bR: 'Load resistance', l_bRi: 'Internal resistance', l_bN: 'Cells in series',
+    h_cmp: 'Compare with real batteries',
+    th_type: 'Type', th_v: 'Voltage', th_e: 'Energy, Wh/kg', th_where: 'Where it\'s used',
+    bat_tbl_note: 'Typical values. Table figures are for the whole battery; the energy above is only for the idealised beaker cell.',
+    w_same: 'Anode and cathode are the same metal, so there is no voltage.',
+    w_swap: 'The anode needs the lower potential. Press "Swap".',
+    w_water: '{m} reacts violently with water: real lithium batteries use an organic electrolyte.',
+    nocur: 'The cell gives no current', ax_time: 'time',
+    u_min: 'min', u_h: 'h', u_day: 'days', u_M: 'M', u_mM: 'mM', u_ohm: 'Ω', u_kohm: 'kΩ', u_ml: 'ml', u_g: 'g', u_V: 'V',
+    u_mA: 'mA', u_mW: 'mW', u_mAh: 'mAh', u_Wh: 'Wh', u_kJ: 'kJ', u_mAhg: 'mAh/g',
+    rb_e0: 'Cell E°', rb_e: 'E (Nernst)', rb_dg: 'ΔG° = −nFE°', rb_n: 'Electrons n', rb_i0: 'Current', rb_p: 'Power',
+    rb_half: 'Runs for', rb_cap: 'Capacity', rb_en: 'Energy', rb_spec: 'Anode capacity',
+    note_cave: 'Mine: density and melting point are handbook values for the pure metals. The mining and smelting sites are Kazakhstan\'s largest; the list is not complete. Textures: Cliff Side rock (Poly Haven), metals Metal053B, 058A, 060C, 051A, 059B, 048C (ambientCG), all CC0.',
+    note_bat: 'Battery: standard electrode potentials at 25 °C, voltage from the Nernst equation E = E° − (RT/nF)·ln Q; discharge is modelled by using up the cathode ions and the anode metal. Can colours come from each metal\'s flame or salt-solution colour. It is the same electrochemistry as corrosion: the metal with the lower potential is oxidised, which is why zinc protects steel.',
+    note_corr: 'Corrosion rates are approximate, order-of-magnitude values from handbooks and the ISO 9223–9226 standards (first-year thickness loss, law d = k·tⁿ). For a school project, not for designing real structures. A 25% thickness loss counts as the limit. Stainless steels in marine environments can fail by pitting, which this simple model does not show. Climate: the rate roughly doubles every +20 °C, and in air it depends on humidity (below 60% corrosion nearly stops, above 80% it speeds up sharply because of the moisture film on the metal). Prices: range for sheet or plate, market estimate for early November 2026 (LME for Al, Cu, Zn, hot-rolled steel indices, supplier price lists for stainless and titanium). The magnesium price is a rough estimate. National Bank of Kazakhstan rate on 03.11.2026: $1 = 453.64 ₸, €1 = 508.17 ₸. Real prices depend on thickness, order size and delivery.'
+  }
+};
+const t = k => T[LANG][k] ?? T.ru[k] ?? k;
+const tf = (k, v) => t(k).replace(/\{(\w+)\}/g, (_, x) => v[x]);
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtN = (v, d = 1) => v.toLocaleString(LOC(), { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/* ---------- Шахта: остановки (общие с 3D-сценой) ---------- */
+// u — положение остановки на пути камеры (0…1); color — цвет металла в сцене
+const CAVE = [
+  { sym: 'Fe', name: { ru: 'Железо', en: 'Iron' }, u: 0.13, color: '#9aa0a6', rho: 7.87, melt: 1538,
+    kz: { ru: 'Соколовско-Сарбайское месторождение, Рудный', en: 'Sokolov-Sarbai deposit, Rudny' }, use: { ru: 'сталь: мосты, рельсы, арматура', en: 'steel: bridges, rails, rebar' } },
+  { sym: 'Cu', name: { ru: 'Медь', en: 'Copper' }, u: 0.28, color: '#e08a4f', rho: 8.96, melt: 1085,
+    kz: { ru: 'Жезказган и Актогай', en: 'Zhezkazgan and Aktogay' }, use: { ru: 'провода, электроника, моторы', en: 'wiring, electronics, motors' } },
+  { sym: 'Zn', name: { ru: 'Цинк', en: 'Zinc' }, u: 0.43, color: '#9ec3d6', rho: 7.13, melt: 420,
+    kz: { ru: 'Риддер, Восточно-Казахстанская область', en: 'Ridder, East Kazakhstan' }, use: { ru: 'цинкование стали против ржавчины, батарейки', en: 'galvanising steel against rust, batteries' } },
+  { sym: 'Al', name: { ru: 'Алюминий', en: 'Aluminium' }, u: 0.58, color: '#d8dee4', rho: 2.70, melt: 660,
+    kz: { ru: 'бокситы Костанайской области, завод в Павлодаре', en: 'bauxite from Kostanay region, smelter in Pavlodar' }, use: { ru: 'самолёты, рамы, банки', en: 'aircraft, frames, cans' } },
+  { sym: 'Ti', name: { ru: 'Титан', en: 'Titanium' }, u: 0.73, color: '#a9a3c9', rho: 4.51, melt: 1668,
+    kz: { ru: 'титано-магниевый комбинат, Усть-Каменогорск', en: 'titanium-magnesium plant, Ust-Kamenogorsk' }, use: { ru: 'авиация, импланты, химические аппараты', en: 'aerospace, implants, chemical equipment' } },
+  { sym: 'Au', name: { ru: 'Золото', en: 'Gold' }, u: 0.88, color: '#ffc85a', rho: 19.32, melt: 1064,
+    kz: { ru: 'Васильковское месторождение, Акмолинская область', en: 'Vasilkovskoye deposit, Akmola region' }, use: { ru: 'контакты в электронике, запас стоимости', en: 'electronics contacts, store of value' } }
+];
+window.CAVE = CAVE;
+window.caveProgress = 0;
+const caveU = p => 0.02 + p * 0.95;
+function renderCaveText() {
+  $('stops').innerHTML = CAVE.map((m, i) => `
+    <div class="card stop" data-stop="${i}" style="--mc:${m.color}">
+      <div class="sym"><i class="swatch" style="background-image:url(tex/${m.sym}_color.jpg)"></i><b>${m.sym}</b><span>${esc(L(m.name))}</span><small>${String(i + 1).padStart(2, '0')} / 06</small></div>
+      <dl>
+        <div><dt>${t('st_dens')}</dt><dd class="n">${fmtN(m.rho, 2)} ${t('u_gcm3')}</dd></div>
+        <div><dt>${t('st_melt')}</dt><dd class="n">${m.melt.toLocaleString(LOC())} °C</dd></div>
+        <div class="w"><dt>${t('st_kz')}</dt><dd>${esc(L(m.kz))}</dd></div>
+        <div class="w"><dt>${t('st_use')}</dt><dd>${esc(L(m.use))}</dd></div>
+      </dl>
+    </div>`).join('');
+  $('rail').innerHTML = CAVE.map((m, i) => `<span data-r="${i}">${m.sym}</span>`).join('');
+  updateCave();
+}
+function updateCave() {
+  const el = $('cave'), r = el.getBoundingClientRect(), span = el.offsetHeight - innerHeight;
+  const p = Math.min(1, Math.max(0, -r.top / span));
+  window.caveProgress = p;
+  const u = caveU(p);
+  let active = -1;
+  CAVE.forEach((m, i) => { if (Math.abs(u - m.u) < 0.055) active = i; });
+  document.querySelectorAll('[data-stop]').forEach(c => c.classList.toggle('on', +c.dataset.stop === active));
+  document.querySelectorAll('[data-r]').forEach(s => s.classList.toggle('on', +s.dataset.r === active));
+  $('caveIntro').classList.toggle('on', p < 0.06);
+  $('caveOutro').classList.toggle('on', p > 0.95);
+  $('depthM').textContent = Math.round(p * 960) + ' ' + t('u_m');
+}
+addEventListener('scroll', updateCave, { passive: true });
+addEventListener('resize', updateCave);
+
+// t, rh: типичные условия среды, при которых заданы k; atm: атмосфера (влажность важна) или погружение
+const ENV = [
+  { id: 'indoor', name: { ru: 'Помещение', en: 'Indoors' }, hint: { ru: 'Отапливаемое помещение. Укажи свою температуру и влажность.', en: 'A heated room. Set your own temperature and humidity.' }, t: 20, rh: 50, atm: 1 },
+  { id: 'rural',  name: { ru: 'Село, чистый воздух', en: 'Countryside, clean air' }, hint: { ru: 'Мало загрязнений.', en: 'Little pollution.' }, t: 10, rh: 75, atm: 1 },
+  { id: 'urban',  name: { ru: 'Город / промзона', en: 'City / industrial' }, hint: { ru: 'SO₂ и выхлопы ускоряют коррозию.', en: 'SO₂ and exhaust fumes speed up corrosion.' }, t: 12, rh: 75, atm: 1 },
+  { id: 'coastal',name: { ru: 'Побережье (солевой туман)', en: 'Coast (salt spray)' }, hint: { ru: 'Хлориды в воздухе, самая агрессивная атмосфера.', en: 'Chlorides in the air, the harshest atmosphere.' }, t: 15, rh: 80, atm: 1 },
+  { id: 'fresh',  name: { ru: 'Пресная вода', en: 'Fresh water' }, hint: { ru: 'Погружение в пресную воду.', en: 'Immersed in fresh water.' }, t: 15, rh: 100, atm: 0 },
+  { id: 'sea',    name: { ru: 'Морская вода', en: 'Seawater' }, hint: { ru: 'Полное погружение в море.', en: 'Fully immersed in the sea.' }, t: 15, rh: 100, atm: 0 },
+  { id: 'acid',   name: { ru: 'Кислая среда (pH ≈ 3)', en: 'Acidic (pH ≈ 3)' }, hint: { ru: 'Химическое производство, кислые стоки.', en: 'Chemical plants, acidic effluent.' }, t: 25, rh: 100, atm: 0 }
+];
+const G = {
+  steel: { ru: 'Сталь', en: 'Steel' }, stain: { ru: 'Нержавеющая сталь', en: 'Stainless steel' }, light: { ru: 'Лёгкие сплавы', en: 'Light alloys' },
+  ti: { ru: 'Титан', en: 'Titanium' }, nonfe: { ru: 'Цветные', en: 'Non-ferrous' }
+};
+// k: потеря толщины за 1-й год, мкм, по средам из ENV; n: показатель в d = k·t^n
+// p: цена листа/плиты, USD/кг [мин, макс], рынок на ноябрь 2026; est: грубая оценка
+const MAT = [
+  { id: 'steel', name: { ru: 'Углеродистая сталь', en: 'Carbon steel' }, grp: G.steel, y: 250, rho: 7.85, p: [0.6, 1.3], n: .6,  fe: 1, pr: 1, k: [1,15,40,100,60,150,1500] },
+  { id: 'corten',name: { ru: 'Атмосферостойкая сталь (Corten)', en: 'Weathering steel (Corten)' }, grp: G.steel, y: 355, rho: 7.85, p: [1.0, 1.8], n: .45, fe: 1, pr: 1, k: [1,8,20,50,40,120,1200] },
+  { id: 'iron',  name: { ru: 'Чугун', en: 'Cast iron' }, grp: G.steel, y: 200, rho: 7.2, p: [1.2, 2.5], n: .6, fe: 1, pr: 1, k: [1,12,35,90,50,120,1200] },
+  { id: 's304',  name: { ru: 'Нержавейка 304', en: 'Stainless 304' }, grp: G.stain, y: 215, rho: 8.0, p: [2.5, 5.0], n: .9, k: [0,.1,.3,4,.5,12,100] },
+  { id: 's316',  name: { ru: 'Нержавейка 316', en: 'Stainless 316' }, grp: G.stain, y: 205, rho: 8.0, p: [3.6, 6.5], n: .9, k: [0,.05,.2,1,.2,3,60] },
+  { id: 'al',    name: { ru: 'Алюминий 6061-T6', en: 'Aluminium 6061-T6' }, grp: G.light, y: 275, rho: 2.70, p: [4.5, 7.0], n: .5, pr: 1, k: [0,.2,.5,2,1,8,500] },
+  { id: 'mg',    name: { ru: 'Магний AZ31', en: 'Magnesium AZ31' }, grp: G.light, y: 200, rho: 1.77, p: [6, 12], est: 1, n: .8, pr: 1, k: [.5,5,15,40,50,500,5000] },
+  { id: 'ti',    name: { ru: 'Титан Ti-6Al-4V', en: 'Titanium Ti-6Al-4V' }, grp: G.ti, y: 880, rho: 4.43, p: [18, 42], n: 1, k: [0,0,.02,.02,0,.1,2] },
+  { id: 'cu',    name: { ru: 'Медь', en: 'Copper' }, grp: G.nonfe, y: 70, rho: 8.96, p: [15.5, 19], n: .7, k: [.1,.8,1.5,3,2,10,100] },
+  { id: 'brass', name: { ru: 'Латунь', en: 'Brass' }, grp: G.nonfe, y: 200, rho: 8.5, p: [10, 14], n: .7, k: [.1,.8,1.5,4,3,15,150] },
+  { id: 'zn',    name: { ru: 'Цинк', en: 'Zinc' }, grp: G.nonfe, y: 90, rho: 7.1, p: [5, 8], n: .9, k: [.1,1,3,6,5,25,800] }
+];
+const PROT = [
+  { id: 'none', name: { ru: 'Без защиты', en: 'None' } },
+  { id: 'paint', name: { ru: 'Краска (подходит стали, Al, Mg)', en: 'Paint (steel, Al, Mg)' } },
+  { id: 'galv', name: { ru: 'Горячее цинкование (только сталь и чугун)', en: 'Hot-dip galvanising (steel and cast iron only)' } },
+  { id: 'cath', name: { ru: 'Катодная защита (в воде, сталь, Al, Mg)', en: 'Cathodic protection (in water; steel, Al, Mg)' } }
+];
+// курс Нацбанка РК на 03.11.2026
+const KZT_PER_USD = 453.64, KZT_PER_EUR = 508.17;
+const CUR = {
+  kzt: { r: KZT_PER_USD, fmt: v => Math.round(v / (v < 10000 ? 10 : 100)) * (v < 10000 ? 10 : 100), pre: '', suf: ' ₸' },
+  usd: { r: 1, fmt: v => v < 100 ? Math.round(v * 10) / 10 : Math.round(v), pre: '$', suf: '' },
+  eur: { r: KZT_PER_USD / KZT_PER_EUR, fmt: v => v < 100 ? Math.round(v * 10) / 10 : Math.round(v), pre: '', suf: ' €' }
+};
+const money = (lo, hi, cur) => { const c = CUR[cur], f = v => c.fmt(v * c.r).toLocaleString(LOC()); return c.pre + f(lo) + '–' + f(hi) + c.suf; };
+// влажность → относительная «мокрость» поверхности (критическая влажность ~60%)
+const WET = [[0, .02], [40, .1], [60, .35], [80, 1], [100, 1.9]];
+function wet(rh) {
+  for (let i = 1; i < WET.length; i++) if (rh <= WET[i][0]) { const [a, fa] = WET[i - 1], [b, fb] = WET[i]; return fa + (fb - fa) * (rh - a) / (b - a); }
+  return WET[WET.length - 1][1];
+}
+const tempF = (T, atm) => Math.pow(2, T / 20) * (atm && T < 0 ? 0.4 : 1);
+function climate(s) {
+  const e = ENV.find(x => x.id === s.env);
+  let f = tempF(s.T, e.atm) / tempF(e.t, e.atm);
+  if (e.atm) f *= wet(s.rh) / wet(e.rh);
+  return f;
+}
+const LIMIT = 0.25;
+const byId = id => MAT.find(m => m.id === id);
+
+function factor(m, envId, prot) {
+  if (prot === 'paint' && m.pr) return 0.25;
+  if (prot === 'galv' && m.fe) return 0.15;
+  if (prot === 'cath' && m.pr && (envId === 'fresh' || envId === 'sea')) return 0.1;
+  return 1;
+}
+const S = () => ({
+  env: $('env').value, t0: +$('t0').value, life: +$('life').value, ymin: +$('ymin').value,
+  rmax: +$('rmax').value, prot: $('prot').value, wc: +$('wc').value, ww: +$('ww').value, wd: +$('wd').value,
+  T: +$('temp').value, rh: +$('rh').value, cur: $('cur').value
+});
+function kEff(m, s) { return m.k[ENV.findIndex(e => e.id === s.env)] * factor(m, s.env, s.prot) * climate(s); }
+function loss(m, s, t) { return kEff(m, s) * Math.pow(t, m.n); } // мкм
+function yearsToLimit(m, s) {
+  const kf = kEff(m, s);
+  if (kf < 0.0005) return Infinity;
+  return Math.pow(LIMIT * s.t0 * 1000 / kf, 1 / m.n);
+}
+const fmtY = y => !isFinite(y) || y > 200 ? t('gt200') : (y < 1 ? fmtN(y, 2) : y < 10 ? fmtN(y, 1) : Math.round(y)) + ' ' + t('u_yr');
+
+/* ---------- Подбор ---------- */
+// отсев по прочности, плотности и коррозии, затем балл 0–100 по весам «что важнее»
+function rankMaterials(s) {
+  const rows = MAT.map(m => {
+    const lossUm = loss(m, s, s.life), frac = lossUm / (s.t0 * 1000);
+    const mass = m.rho * s.t0, cost = mass * (m.p[0] + m.p[1]) / 2;
+    const why = [];
+    if (m.y < s.ymin) why.push(tf('why_yield', { y: m.y }));
+    if (m.rho > s.rmax) why.push(tf('why_rho', { r: fmtN(m.rho, 2) }));
+    if (frac > LIMIT) why.push(tf('why_corr', { l: s.life, p: Math.min(100, Math.round(frac * 100)) }));
+    return { m, lossUm, frac, mass, cost, why };
+  });
+  const ok = rows.filter(r => !r.why.length), bad = rows.filter(r => r.why.length);
+  const norm = (arr, f) => { const v = arr.map(f), lo = Math.min(...v), hi = Math.max(...v); return x => hi === lo ? 0 : (f(x) - lo) / (hi - lo); };
+  if (ok.length) {
+    const nc = norm(ok, r => r.cost), nm = norm(ok, r => r.mass), nd = norm(ok, r => r.frac);
+    const sum = (s.wc + s.ww + s.wd) || 1;
+    ok.forEach(r => r.score = Math.round(100 * (1 - (s.wc * nc(r) + s.ww * nm(r) + s.wd * nd(r)) / sum)));
+    ok.sort((a, b) => b.score - a.score);
+  }
+  return { ok, bad };
+}
+function renderSelector() {
+  const s = S();
+  $('t0o').textContent = fmtN(s.t0) + ' ' + t('u_mm');
+  $('lifeo').textContent = s.life + ' ' + t('u_yr');
+  $('ymino').textContent = s.ymin + ' ' + t('u_mpa');
+  $('rmaxo').textContent = fmtN(s.rmax) + ' ' + t('u_gcm3');
+  ['wc','ww','wd'].forEach(id => $(id + 'o').textContent = s[id] + ' / 5');
+  const e = ENV.find(x => x.id === s.env);
+  $('envHint').textContent = L(e.hint);
+  $('tempLab').textContent = t(e.atm ? 'l_temp_air' : 'l_temp_water');
+  $('tempo').textContent = s.T + ' °C';
+  $('rho').textContent = s.rh + '%';
+  $('rhField').hidden = !e.atm;
+  const mult = climate(s);
+  $('multo').textContent = '×' + fmtN(mult, mult < 10 ? 2 : 1);
+  const notes = [];
+  if (e.atm && s.rh < 60) notes.push(t('n_lowrh'));
+  if (e.atm && s.rh >= 80) notes.push(t('n_highrh'));
+  if (e.atm && s.T < 0) notes.push(t('n_freeze'));
+  if (s.T >= 50) notes.push(t('n_hot'));
+  notes.push(tf('n_typical', { c: e.t + ' °C' + (e.atm ? ', ' + e.rh + '%' : '') }));
+  $('climHint').textContent = notes.join(' ');
+  const { ok, bad } = rankMaterials(s);
+  $('resTitle').textContent = tf('res_title', { ok: ok.length, all: MAT.length });
+  const card = (r, i) => {
+    const pct = Math.max(0, 100 - r.frac * 100);
+    const stats = `<dl class="stats">
+      <div><dt>${t('s_loss')}</dt><dd>${fmtN(r.lossUm, r.lossUm < 10 ? 2 : 0)} ${t('u_um')}</dd></div>
+      <div><dt>${t('s_mass')}</dt><dd>${fmtN(r.mass)} ${t('u_kgm2')}</dd></div>
+      <div><dt>${t('s_cost_m2')}</dt><dd>${money(r.mass * r.m.p[0], r.mass * r.m.p[1], s.cur)}</dd></div>
+      <div><dt>${t('s_cost_kg')}${r.m.est ? t('s_est') : ''}</dt><dd>${money(r.m.p[0], r.m.p[1], s.cur)}</dd></div>
+      <div><dt>${t('s_tolimit')}</dt><dd>${fmtY(yearsToLimit(r.m, s))}</dd></div></dl>
+      <div class="bar"><i style="width:${pct}%"></i><b></b></div>`;
+    return `<article class="mat ${r.why.length ? 'fail' : ''}">
+      <div class="rank">${r.why.length ? '×' : i + 1}</div>
+      <div><h3>${L(r.m.name)}</h3><p class="grp">${L(r.m.grp)} · ${t('s_yield')} ${r.m.y} ${t('u_mpa')} · ${fmtN(r.m.rho, 2)} ${t('u_gcm3')}</p></div>
+      ${r.why.length ? '<div></div>' : `<div class="score"><small>${t('s_score')}</small>${r.score}</div>`}
+      ${r.why.length ? `<p class="fail-why">${r.why.join('; ')}</p>` : stats}
+      <button class="act" type="button" data-sim="${r.m.id}">${t('b_sim')}</button></article>`;
+  };
+  $('list').innerHTML = ok.map(card).join('') + bad.map(card).join('');
+}
+
+/* ---------- Симулятор ---------- */
+let compare = ['steel', 's304', 'al'];
+const COLORS = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)', 'var(--s6)'];
+function renderSim() {
+  const s = S(), yr = +$('yr').value, fm = byId($('focus').value);
+  $('yro').textContent = yr + ' ' + t('u_yr');
+  const list = [fm, ...compare.filter(id => id !== fm.id).map(byId)].slice(0, 6);
+  $('chips').innerHTML = MAT.filter(m => m.id !== fm.id).map(m => {
+    const i = list.findIndex(x => x.id === m.id);
+    return `<button class="chip" type="button" data-cmp="${m.id}" aria-pressed="${i > 0}"><i style="background:${i > 0 ? COLORS[i] : 'transparent'}"></i>${L(m.name).split(' (')[0]}</button>`;
+  }).join('');
+
+  // сечение
+  const x0 = 40, x1 = 600, H = 190, pxmm = Math.min(120 / s.t0, 40), th = s.t0 * pxmm, top = (H - th) / 2;
+  const lossMm = Math.min(s.t0, loss(fm, s, yr) / 1000), lossPx = lossMm * pxmm, N = 56, rnd = i => { const v = Math.sin(i * 12.9898 + fm.id.length * 7.1) * 43758.5453; return v - Math.floor(v); };
+  const edge = (y, dir) => { let p = ''; for (let i = 0; i <= N; i++) { const x = x0 + (x1 - x0) * i / N, d = lossPx / 2 * (0.55 + 0.9 * rnd(i + (dir > 0 ? 0 : 99))); p += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + (y + dir * d).toFixed(1); } return p; };
+  const topE = edge(top, 1);
+  const botRev = (() => { let p = ''; for (let i = N; i >= 0; i--) { const x = x0 + (x1 - x0) * i / N, d = lossPx / 2 * (0.55 + 0.9 * rnd(i)); p += (p ? 'L' : 'M') + x.toFixed(1) + ' ' + (top + th - d).toFixed(1); } return p; })();
+  const body = topE + 'L' + x1 + ' ' + (top + th - lossPx / 2 * (0.55 + 0.9 * rnd(N))).toFixed(1) + botRev.replace(/^M[^L]+/, '') + 'Z';
+  $('cross').innerHTML = `
+    <rect x="${x0}" y="${top}" width="${x1 - x0}" height="${th}" fill="var(--rust)" opacity=".35"/>
+    <path d="${body}" fill="var(--steel)"/>
+    <rect x="${x0}" y="${top}" width="${x1 - x0}" height="${th}" fill="none" stroke="var(--muted)" stroke-dasharray="4 3"/>
+    <text x="${x0}" y="${top - 8}">${t('x_orig')} ${fmtN(s.t0)} ${t('u_mm')}</text>
+    <text x="${x1}" y="${top + th + 18}" text-anchor="end">${yr} ${t('u_yr')} · ${L(fm.name)}</text>`;
+
+  const e = ENV.find(x => x.id === s.env), left = Math.max(0, s.t0 - lossMm), yl = yearsToLimit(fm, s);
+  $('simTitle').textContent = tf('sim_title', { e: L(e.name).toLowerCase() });
+  $('readout').innerHTML = `
+    <div><dt>${t('r_lost')}</dt><dd>${fmtN(lossMm * 1000, lossMm * 1000 < 10 ? 2 : 0)} ${t('u_um')}</dd></div>
+    <div><dt>${t('r_left')}</dt><dd>${fmtN(left, 2)} ${t('u_mm')}</dd></div>
+    <div><dt>${t('r_to25')}</dt><dd>${fmtY(yl)}</dd></div>
+    <div><dt>${t('r_climate')}: ${s.T} °C${e.atm ? ', ' + s.rh + '%' : ''}</dt><dd>×${fmtN(climate(s), 2)}</dd></div>
+    <div><dt>${t('r_rate')}</dt><dd>${fmtN(yr > 0 ? kEff(fm, s) * fm.n * Math.pow(yr, fm.n - 1) : 0, 2)} ${t('u_umy')}</dd></div>`;
+
+  // график
+  const Lx = 48, R = 628, Tp = 14, B = 276, X = v => Lx + (R - Lx) * v / 50, Y = v => B - (B - Tp) * v / s.t0;
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const v = s.t0 * i / 4; g += `<line x1="${Lx}" x2="${R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${Lx - 6}" y="${Y(v) + 4}" text-anchor="end">${fmtN(v, v % 1 ? 1 : 0)}</text>`; }
+  for (let v = 0; v <= 50; v += 10) g += `<text x="${X(v)}" y="${B + 18}" text-anchor="middle">${v}</text>`;
+  g += `<text x="${(Lx + R) / 2}" y="${B + 36}" text-anchor="middle">${t('ax_years')}</text><text x="${Lx}" y="9">${t('u_mm')}</text>`;
+  g += `<line x1="${Lx}" x2="${R}" y1="${Y(s.t0 * (1 - LIMIT))}" y2="${Y(s.t0 * (1 - LIMIT))}" stroke="var(--rust)" stroke-dasharray="5 4"/><text x="${R}" y="${Y(s.t0 * (1 - LIMIT)) - 5}" text-anchor="end" style="fill:var(--rust)">${t('ax_limit')}</text>`;
+  list.forEach((m, i) => {
+    let d = ''; for (let v = 0; v <= 50; v += 1) d += (v ? 'L' : 'M') + X(v).toFixed(1) + ' ' + Y(Math.max(0, s.t0 - loss(m, s, v) / 1000)).toFixed(1);
+    g += `<path d="${d}" fill="none" stroke="${COLORS[i]}" stroke-width="${i ? 2 : 3.5}"/>`;
+  });
+  g += `<line x1="${X(yr)}" x2="${X(yr)}" y1="${Tp}" y2="${B}" stroke="var(--ink)" stroke-width="1"/>`;
+  list.forEach((m, i) => { const v = Math.max(0, s.t0 - loss(m, s, yr) / 1000); g += `<circle cx="${X(yr)}" cy="${Y(v)}" r="4.5" fill="${COLORS[i]}" stroke="var(--surface)" stroke-width="1.5"/>`; });
+  $('chart').innerHTML = g;
+}
+
+/* ---------- Батарея ---------- */
+// стандартные потенциалы восстановления M^z+ + z e⁻ → M при 25 °C, В; M — молярная масса, г/моль; water — реагирует с водой
+// c — цвет «банки»: окраска пламени или раствора соли этого металла, где она есть
+const HALF = [
+  { id: 'Li', name: { ru: 'Литий', en: 'Lithium' }, E: -3.04, z: 1, M: 6.94, ion: 'Li⁺', water: 1, c: '#d8435f' },
+  { id: 'K',  name: { ru: 'Калий', en: 'Potassium' }, E: -2.93, z: 1, M: 39.10, ion: 'K⁺', water: 1, c: '#9a63e6' },
+  { id: 'Na', name: { ru: 'Натрий', en: 'Sodium' }, E: -2.71, z: 1, M: 22.99, ion: 'Na⁺', water: 1, c: '#e09a00' },
+  { id: 'Mg', name: { ru: 'Магний', en: 'Magnesium' }, E: -2.37, z: 2, M: 24.31, ion: 'Mg²⁺', c: '#8ea4b5' },
+  { id: 'Al', name: { ru: 'Алюминий', en: 'Aluminium' }, E: -1.66, z: 3, M: 26.98, ion: 'Al³⁺', c: '#6f98c2' },
+  { id: 'Zn', name: { ru: 'Цинк', en: 'Zinc' }, E: -0.76, z: 2, M: 65.38, ion: 'Zn²⁺', c: '#2f9e8f' },
+  { id: 'Fe', name: { ru: 'Железо', en: 'Iron' }, E: -0.44, z: 2, M: 55.85, ion: 'Fe²⁺', c: '#b8572a' },
+  { id: 'Ni', name: { ru: 'Никель', en: 'Nickel' }, E: -0.25, z: 2, M: 58.69, ion: 'Ni²⁺', c: '#5f9f52' },
+  { id: 'Sn', name: { ru: 'Олово', en: 'Tin' }, E: -0.14, z: 2, M: 118.71, ion: 'Sn²⁺', c: '#7c8794' },
+  { id: 'Pb', name: { ru: 'Свинец', en: 'Lead' }, E: -0.13, z: 2, M: 207.2, ion: 'Pb²⁺', c: '#55616f' },
+  { id: 'Cu', name: { ru: 'Медь', en: 'Copper' }, E: 0.34, z: 2, M: 63.55, ion: 'Cu²⁺', c: '#2a7fd0' },
+  { id: 'Ag', name: { ru: 'Серебро', en: 'Silver' }, E: 0.80, z: 1, M: 107.87, ion: 'Ag⁺', c: '#9aa8b6' },
+  { id: 'Au', name: { ru: 'Золото', en: 'Gold' }, E: 1.50, z: 3, M: 196.97, ion: 'Au³⁺', c: '#d39a1c' }
+];
+const PRESETS = [
+  { name: { ru: 'Даниэль Zn–Cu', en: 'Daniell Zn–Cu' }, an: 'Zn', cat: 'Cu' },
+  { name: 'Mg–Cu', an: 'Mg', cat: 'Cu' },
+  { name: 'Al–Cu', an: 'Al', cat: 'Cu' },
+  { name: 'Zn–Ag', an: 'Zn', cat: 'Ag' }
+];
+const REAL = [
+  [{ ru: 'Литий-ионный', en: 'Lithium-ion' }, '3,6–3,7', '150–270', { ru: 'телефоны, ноутбуки, электромобили', en: 'phones, laptops, electric cars' }],
+  ['LiFePO₄', '3,2', '90–160', { ru: 'накопители энергии, автобусы', en: 'energy storage, buses' }],
+  ['NiMH', '1,2', '60–120', { ru: 'аккумуляторы АА, гибридные авто', en: 'AA rechargeables, hybrid cars' }],
+  [{ ru: 'Щелочная (Zn–MnO₂)', en: 'Alkaline (Zn–MnO₂)' }, '1,5', '100–150', { ru: 'одноразовые батарейки АА', en: 'disposable AA batteries' }],
+  [{ ru: 'Свинцово-кислотный', en: 'Lead-acid' }, '2,0', '30–40', { ru: 'автомобильный стартер', en: 'car starter battery' }]
+];
+const FARADAY = 96485, RGAS = 8.314;
+const hb = id => HALF.find(h => h.id === id);
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+const pow10 = id => Math.pow(10, +$(id).value);
+const sign = v => (v > 0 ? '+' : '') + fmtN(v, 2);
+const fmtC = c => c >= 0.1 ? fmtN(c, 2) + ' ' + t('u_M') : fmtN(c * 1000, c >= 0.01 ? 0 : 1) + ' ' + t('u_mM');
+const fmtOhm = r => r >= 1000 ? fmtN(r / 1000, r >= 10000 ? 0 : 1) + ' ' + t('u_kohm') : fmtN(r, r < 10 ? 1 : 0) + ' ' + t('u_ohm');
+const fmtTime = h => h < 1 ? fmtN(h * 60, 0) + ' ' + t('u_min') : h < 48 ? fmtN(h, h < 10 ? 1 : 0) + ' ' + t('u_h') : fmtN(h / 24, h < 240 ? 1 : 0) + ' ' + t('u_day');
+const bat = { an: 'Zn', cat: 'Cu', slot: 'an' };
+const B = () => ({
+  an: hb(bat.an), cat: hb(bat.cat), Can: pow10('bCan'), Ccat: pow10('bCcat'),
+  T: +$('bT').value + 273.15, V: +$('bV').value / 1000, m: +$('bM').value, R: pow10('bR'), r: +$('bRi').value, N: +$('bN').value
+});
+function cellEMF(b, Can, Ccat) {
+  const n = b.an.z * b.cat.z / gcd(b.an.z, b.cat.z);
+  const E0 = b.cat.E - b.an.E;
+  const lnQ = (n / b.an.z) * Math.log(Can) - (n / b.cat.z) * Math.log(Ccat);
+  return { n, E0, E: E0 - RGAS * b.T / (n * FARADAY) * lnQ };
+}
+// разряд: на каждом шаге расходуется 0,6% оставшихся электронов ограничивающего реагента
+function discharge(b) {
+  let Can = b.Can, molAn = b.m / b.an.M, molCat = b.Ccat * b.V, time = 0, mAh = 0, mWh = 0;
+  const eAn = molAn * b.an.z, eCat = molCat * b.cat.z, e0 = Math.min(eAn, eCat);
+  const pts = [];
+  for (let i = 0; i < 1500; i++) {
+    const E = cellEMF(b, Can, molCat / b.V).E;
+    if (E <= 0) break;
+    const I = b.N * E / (b.R + b.N * b.r), Vt = I * b.R;
+    pts.push([time / 3600, Vt, I]);
+    const eLeft = Math.min(molAn * b.an.z, molCat * b.cat.z);
+    if (eLeft <= e0 * 1e-3) break;
+    const dne = eLeft * 0.006, dt = dne * FARADAY / I;
+    molAn -= dne / b.an.z; Can += dne / b.an.z / b.V; molCat -= dne / b.cat.z;
+    time += dt; mAh += I * dt / 3.6; mWh += Vt * I * dt / 3.6;
+  }
+  return { pts, mAh, mWh, theoMAh: e0 * FARADAY / 3.6 };
+}
+function niceMax(v) {
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  return [1, 2, 2.5, 5, 10].map(k => k * p).find(x => x >= v);
+}
+const canHTML = h => `<span class="sym">${h.id}</span><span class="e">${sign(h.E)} ${t('u_V')}</span>`;
+function renderBat() {
+  const b = B();
+  $('bCano').textContent = b.an.ion + ' ' + fmtC(b.Can);
+  $('bCcato').textContent = b.cat.ion + ' ' + fmtC(b.Ccat);
+  $('bTo').textContent = $('bT').value + ' °C';
+  $('bVo').textContent = $('bV').value + ' ' + t('u_ml');
+  $('bMo').textContent = fmtN(b.m) + ' ' + t('u_g');
+  $('bRo').textContent = fmtOhm(b.R);
+  $('bRio').textContent = fmtOhm(b.r);
+  $('bNo').textContent = b.N;
+
+  const emf = cellEMF(b, b.Can, b.Ccat), works = emf.E > 0;
+  const sim = works ? discharge(b) : { pts: [], mAh: 0, mWh: 0, theoMAh: 0 };
+  const I0 = works ? b.N * emf.E / (b.R + b.N * b.r) : 0, V0 = I0 * b.R;
+  const half = sim.pts.find(p => p[1] < V0 / 2), tEnd = sim.pts.length ? sim.pts[sim.pts.length - 1][0] : 0;
+
+  // витрина
+  const stage = $('bStage');
+  stage.style.setProperty('--ca', b.an.c); stage.style.setProperty('--cb', b.cat.c);
+  $('bGhost').textContent = b.an.id + ' ' + b.cat.id;
+  $('bigAn').style.setProperty('--c', b.an.c); $('bigAn').innerHTML = canHTML(b.an);
+  $('bigCat').style.setProperty('--c', b.cat.c); $('bigCat').innerHTML = canHTML(b.cat);
+  $('nmAn').textContent = L(b.an.name); $('nmCat').textContent = L(b.cat.name);
+  $('bVolt').textContent = (works ? fmtN(b.N * emf.E, 2) : '0') + ' ' + t('u_V');
+  $('bHalf').textContent = `${b.an.id} → ${b.an.ion} + ${b.an.z}e⁻   ·   ${b.cat.ion} + ${b.cat.z}e⁻ → ${b.cat.id}`;
+  const warn = [];
+  if (b.an.id === b.cat.id) warn.push(t('w_same'));
+  else if (!works) warn.push(t('w_swap'));
+  [b.an, b.cat].filter(h => h.water).forEach(h => warn.push(tf('w_water', { m: L(h.name) })));
+  $('bWarn').textContent = warn.join(' ');
+  $('slotAn').setAttribute('aria-pressed', String(bat.slot === 'an'));
+  $('slotCat').setAttribute('aria-pressed', String(bat.slot === 'cat'));
+  $('shelf').innerHTML = HALF.map(h => {
+    const tag = h.id === bat.an ? '<span class="tag">−</span>' : h.id === bat.cat ? '<span class="tag">+</span>' : '';
+    return `<button type="button" class="can ${h.id === bat.an ? 'is-an' : ''} ${h.id === bat.cat ? 'is-cat' : ''}" style="--c:${h.c}" data-el="${h.id}" aria-label="${esc(L(h.name))}">${tag}${canHTML(h)}</button>`;
+  }).join('');
+
+  // ключевые числа
+  const P = I0 * V0 * 1000, spec = b.an.z * FARADAY / (3.6 * b.an.M);
+  $('bKey').innerHTML = `
+    <div><dt>${t('rb_i0')}</dt><dd>${fmtN(I0 * 1000, I0 < 0.01 ? 2 : 1)} ${t('u_mA')}</dd></div>
+    <div><dt>${t('rb_p')}</dt><dd>${fmtN(P, P < 10 ? 2 : 0)} ${t('u_mW')}</dd></div>
+    <div><dt>${t('rb_half')}</dt><dd>${works ? fmtTime(half ? half[0] : tEnd) : '—'}</dd></div>
+    <div><dt>${t('rb_cap')}</dt><dd>${fmtN(sim.mAh, 0)} ${t('u_mAh')}</dd></div>`;
+  $('bRead').innerHTML = `
+    <div><dt>${t('rb_e0')}</dt><dd>${fmtN(emf.E0, 2)} ${t('u_V')}</dd></div>
+    <div><dt>${t('rb_e')}</dt><dd>${fmtN(emf.E, 3)} ${t('u_V')}</dd></div>
+    <div><dt>${t('rb_dg')}</dt><dd>${fmtN(-emf.n * FARADAY * emf.E0 / 1000, 0)} ${t('u_kJ')}</dd></div>
+    <div><dt>${t('rb_n')}</dt><dd>${emf.n}</dd></div>
+    <div><dt>${t('rb_en')}</dt><dd>${fmtN(sim.mWh / 1000, 2)} ${t('u_Wh')}</dd></div>
+    <div><dt>${t('rb_spec')}</dt><dd>${fmtN(spec, 0)} ${t('u_mAhg')}</dd></div>`;
+
+  // график
+  const Lx = 48, R = 628, Tp = 14, Bt = 276;
+  if (!sim.pts.length) { $('bChart').innerHTML = `<text x="320" y="160" text-anchor="middle">${t('nocur')}</text>`; return; }
+  const tMax = niceMax(Math.max(tEnd, 1e-3)), vMax = niceMax(V0 * 1.1);
+  const X = v => Lx + (R - Lx) * v / tMax, Y = v => Bt - (Bt - Tp) * v / vMax;
+  const unit = tMax <= 1 ? [t('u_min'), 60] : tMax <= 48 ? [t('u_h'), 1] : [t('u_day'), 1 / 24];
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const v = vMax * i / 4; g += `<line x1="${Lx}" x2="${R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${Lx - 6}" y="${Y(v) + 4}" text-anchor="end">${fmtN(v, v < 1 ? 2 : 1)}</text>`; }
+  for (let i = 0; i <= 5; i++) { const v = tMax * i / 5; g += `<text x="${X(v)}" y="${Bt + 18}" text-anchor="middle">${fmtN(v * unit[1], v * unit[1] < 10 && v ? 1 : 0)}</text>`; }
+  g += `<text x="${(Lx + R) / 2}" y="${Bt + 36}" text-anchor="middle">${t('ax_time')}, ${unit[0]}</text><text x="${Lx}" y="9">${t('u_V')}</text>`;
+  g += `<line x1="${Lx}" x2="${R}" y1="${Y(V0 / 2)}" y2="${Y(V0 / 2)}" stroke="var(--rust)" stroke-dasharray="5 4"/><text x="${R}" y="${Y(V0 / 2) - 5}" text-anchor="end" style="fill:var(--rust)">−50%</text>`;
+  const d = sim.pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('');
+  g += `<path d="${d} L${X(tEnd).toFixed(1)} ${Bt} L${Lx} ${Bt} Z" fill="${b.cat.c}" opacity=".18"/><path d="${d}" fill="none" stroke="${b.cat.c}" stroke-width="3"/>`;
+  if (half) g += `<circle cx="${X(half[0])}" cy="${Y(half[1])}" r="5" fill="var(--rust)" stroke="var(--surface)" stroke-width="1.5"/>`;
+  $('bChart').innerHTML = g;
+}
+
+/* ---------- ИИ-помощник ---------- */
+const EXAMPLES = {
+  ru: ['Рама drivetrain для робота FTC', 'Скамейка в парке Астаны', 'Лестница для причала на Каспии', 'Полка в ванной комнате', 'Корпус для дрона'],
+  en: ['Drivetrain frame for an FTC robot', 'Park bench in Astana', 'Pier ladder on the Caspian Sea', 'Bathroom shelf', 'Drone body']
+};
+// пример ответа, чтобы вкладка не была пустой до первого запроса
+const EXAMPLE_ANSWER = {
+  ru: {
+    task: 'Рама drivetrain для робота FTC',
+    summary: 'Раме нужна жёсткость при малом весе (масса робота ограничена) и стойкость к ударам. Робот работает в помещении, так что коррозия почти не важна: срок службы определяют удары, вибрация и усталость металла.',
+    env: 'indoor', temp: 20, rh: 45,
+    recommendations: [
+      { materialId: 'al', thickness_mm: 3, life_years: 3, form: 'U-профиль или лист с отверстиями', why: 'Лёгкий и прочный, легко сверлить и резать в школьной мастерской. Самый частый выбор команд FTC.', notes: 'Срок ограничен ударами и усталостью в местах крепления, а не коррозией.' },
+      { materialId: 'steel', thickness_mm: 1.5, life_years: 5, form: 'Тонкий лист, гнутые уголки', why: 'Дешевле и лучше держит удары, но почти втрое тяжелее алюминия.', notes: 'Годится для усиления отдельных узлов, не для всей рамы.' },
+      { materialId: 'ti', thickness_mm: 2, life_years: 10, form: 'Пластины', why: 'Лучшее соотношение прочности и веса, но очень дорогой и тяжело обрабатывается.', notes: 'Для школьной команды обычно избыточен.' }
+    ],
+    avoid: [
+      { materialId: 'mg', why: 'Хрупкий при ударах, а стружка магния горит.' },
+      { materialId: 'iron', why: 'Тяжёлый и хрупкий, трескается от ударов.' }
+    ],
+    tips: ['Облегчай раму отверстиями: масса падает на 20–30% почти без потери жёсткости.', 'Сверься с правилами текущего сезона FTC по габаритам и материалам.', 'Ставь гайки с нейлоновым кольцом, иначе вибрация их раскрутит.']
+  },
+  en: {
+    task: 'Drivetrain frame for an FTC robot',
+    summary: 'The frame needs stiffness at low weight (robot mass is limited) and must survive impacts. The robot works indoors, so corrosion barely matters: service life is set by impacts, vibration and metal fatigue.',
+    env: 'indoor', temp: 20, rh: 45,
+    recommendations: [
+      { materialId: 'al', thickness_mm: 3, life_years: 3, form: 'U-channel or perforated sheet', why: 'Light and strong, easy to drill and cut in a school workshop. The most common choice among FTC teams.', notes: 'Life is limited by impacts and fatigue around fasteners, not by corrosion.' },
+      { materialId: 'steel', thickness_mm: 1.5, life_years: 5, form: 'Thin sheet, bent brackets', why: 'Cheaper and handles impacts better, but almost three times heavier than aluminium.', notes: 'Good for reinforcing single joints, not the whole frame.' },
+      { materialId: 'ti', thickness_mm: 2, life_years: 10, form: 'Plates', why: 'Best strength-to-weight ratio, but very expensive and hard to machine.', notes: 'Usually overkill for a school team.' }
+    ],
+    avoid: [
+      { materialId: 'mg', why: 'Brittle under impact, and magnesium chips are flammable.' },
+      { materialId: 'iron', why: 'Heavy and brittle; it cracks on impact.' }
+    ],
+    tips: ['Lighten the frame with holes: mass drops by 20–30% with little loss of stiffness.', 'Check the current FTC season rules on size and materials.', 'Use nylon-insert lock nuts, or vibration will loosen them.']
+  }
+};
+let lastAI = null; // null — показываем пример ответа на текущем языке
+const clamp = (v, lo, hi, d) => { const n = Number(v); return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+function normalize(r) {
+  const env = ENV.find(e => e.id === r?.env) || ENV[0];
+  const recs = (Array.isArray(r?.recommendations) ? r.recommendations : []).filter(x => byId(x?.materialId)).slice(0, 3).map(x => ({
+    materialId: x.materialId, thickness_mm: clamp(x.thickness_mm, 0.5, 30, 3), life_years: clamp(x.life_years, 0.1, 200, 5),
+    form: String(x.form || ''), why: String(x.why || ''), notes: String(x.notes || '')
+  }));
+  return {
+    summary: String(r?.summary || ''), env: env.id, temp: clamp(r?.temp, env.atm ? -30 : 0, 90, env.t), rh: clamp(r?.rh, 0, 100, env.rh),
+    recommendations: recs,
+    avoid: (Array.isArray(r?.avoid) ? r.avoid : []).filter(x => byId(x?.materialId)).slice(0, 3).map(x => ({ materialId: x.materialId, why: String(x.why || '') })),
+    tips: (Array.isArray(r?.tips) ? r.tips : []).slice(0, 4).map(String)
+  };
+}
+// без Claude (отдельный сайт) помощник работает по ключевым словам: угадывает условия и ранжирует материалы как «Подбор»
+let OFFLINE = !window.claude?.use;
+const RULES = [
+  { re: /ftc|робот|robot|дрон|drone|квадрокоптер|рама|frame|велосипед|bike|самокат|scooter/i, tip: 'tip_light', p: { env: 'indoor', T: 20, rh: 45, t0: 2, life: 3, ymin: 200, wc: 2, ww: 5, wd: 1 } },
+  { re: /мор|причал|пирс|яхт|лодк|корабл|каспи|sea|pier|boat|ship|marine|caspian/i, tip: 'tip_sea', p: { env: 'sea', T: 15, rh: 100, t0: 6, life: 20, ymin: 150, wc: 2, ww: 1, wd: 5 } },
+  { re: /побереж|пляж|набережн|coast|beach|seaside/i, tip: 'tip_sea', p: { env: 'coastal', T: 15, rh: 80, t0: 4, life: 20, ymin: 150, wc: 3, ww: 1, wd: 5 } },
+  { re: /ванн|душ|кухн|саун|bath|shower|kitchen|sauna/i, tip: 'tip_wet', p: { env: 'indoor', T: 25, rh: 90, t0: 2, life: 15, ymin: 100, wc: 3, ww: 2, wd: 4 } },
+  { re: /кислот|химич|лаборатор|acid|chemical|\blab/i, tip: 'tip_acid', p: { env: 'acid', T: 25, rh: 100, t0: 6, life: 10, ymin: 150, wc: 1, ww: 1, wd: 5 } },
+  { re: /река|реки|реку|озер|бассейн|пруд|водопровод|river|lake|pool|pond|pipe/i, tip: 'tip_water', p: { env: 'fresh', T: 15, rh: 100, t0: 4, life: 20, ymin: 150, wc: 3, ww: 1, wd: 4 } },
+  { re: /мост|здани|каркас|строит|балк|опор|bridge|building|beam|construct/i, tip: 'tip_struct', p: { env: 'urban', T: 10, rh: 75, t0: 12, life: 50, ymin: 300, wc: 4, ww: 1, wd: 4 } },
+  { re: /парк|скамейк|улиц|забор|двор|ворот|bench|park|street|fence|gate|yard|outdoor/i, tip: 'tip_out', p: { env: 'urban', T: 5, rh: 70, t0: 4, life: 25, ymin: 150, wc: 4, ww: 1, wd: 4 } },
+  { re: /дом|комнат|полк|мебел|стол|шкаф|indoor|room|shelf|furniture|desk|table/i, tip: 'tip_in', p: { env: 'indoor', T: 20, rh: 50, t0: 2, life: 20, ymin: 150, wc: 4, ww: 2, wd: 2 } }
+];
+function offlineAdvise(task) {
+  const rule = RULES.find(r => r.re.test(task));
+  const p = { ...(rule ? rule.p : RULES[7].p), prot: 'none', rmax: 10 };
+  const { ok, bad } = rankMaterials(p);
+  const cur = $('cur').value, e = ENV.find(x => x.id === p.env);
+  return {
+    task, offline: true, params: p, env: p.env, temp: p.T, rh: p.rh,
+    summary: rule ? tf('off_sum', { env: L(e.name).toLowerCase(), T: p.T, life: p.life, t0: fmtN(p.t0) }) : t('off_none_sum'),
+    recommendations: ok.slice(0, 3).map(r => ({
+      materialId: r.m.id, thickness_mm: p.t0, life_years: p.life, form: L(r.m.grp),
+      why: tf('off_why', { score: r.score, mass: fmtN(r.mass), cost: money(r.mass * r.m.p[0], r.mass * r.m.p[1], cur) }),
+      notes: tf('off_note', { y: fmtY(yearsToLimit(r.m, p)) })
+    })),
+    avoid: bad.slice(0, 2).map(r => ({ materialId: r.m.id, why: r.why[0] })),
+    tips: [t(rule ? rule.tip : 'tip_default'), t('tip_tune')]
+  };
+}
+const shownAI = () => lastAI || (OFFLINE ? offlineAdvise(EXAMPLES[LANG][0]) : EXAMPLE_ANSWER[LANG]);
+function renderAI() {
+  const d = shownAI(), example = !lastAI;
+  const e = ENV.find(x => x.id === d.env), cur = $('cur').value;
+  const cards = d.recommendations.map((r, i) => {
+    const m = byId(r.materialId), mass = m.rho * r.thickness_mm;
+    const s = { env: d.env, T: d.temp, rh: d.rh, prot: 'none', t0: r.thickness_mm };
+    return `<article class="mat">
+      <div class="rank">${i + 1}</div>
+      <div><h3>${esc(L(m.name))}</h3><p class="grp">${esc(r.form) || esc(L(m.grp))}</p></div>
+      <div class="score"><small>${t('s_life')}</small>~${fmtN(r.life_years, r.life_years < 10 ? 1 : 0)} ${t('u_yr')}</div>
+      <dl class="stats">
+        <div><dt>${t('s_thick')}</dt><dd>${fmtN(r.thickness_mm)} ${t('u_mm')}</dd></div>
+        <div><dt>${t('s_density')}</dt><dd>${fmtN(m.rho, 2)} ${t('u_gcm3')}</dd></div>
+        <div><dt>${t('s_mass')}</dt><dd>${fmtN(mass)} ${t('u_kgm2')}</dd></div>
+        <div><dt>${t('s_cost_m2')}</dt><dd>${money(mass * m.p[0], mass * m.p[1], cur)}</dd></div>
+        <div><dt>${t('s_corr25')}</dt><dd>${fmtY(yearsToLimit(m, s))}</dd></div>
+      </dl>
+      <p class="why">${esc(r.why)}</p>
+      ${r.notes ? `<p class="note2">${esc(r.notes)}</p>` : ''}
+      <div class="btns"><button class="act" type="button" data-apply="${i}">${t('b_apply')}</button><button class="act" type="button" data-sim="${m.id}">${t('b_sim')}</button></div>
+    </article>`;
+  }).join('');
+  $('aiOut').innerHTML = `
+    ${example ? `<p><span class="badge">${t('ai_example')}</span> <span class="hint">${tf('ai_example_for', { x: esc(d.task) })}</span></p>` : `<h2>${t(d.offline ? 'off_title' : 'ai_rec')}</h2>`}
+    ${d.summary ? `<p class="summary">${esc(d.summary)}</p>` : ''}
+    <p class="cond">${t('ai_cond')}: ${esc(L(e.name))} · ${d.temp} °C${e.atm ? ' · ' + d.rh + '%' : ''}</p>
+    ${cards || `<p class="hint">${t('ai_none')}</p>`}
+    ${d.avoid.length ? `<h2>${t('ai_avoid')}</h2><ul class="avoid">${d.avoid.map(a => `<li><b>${esc(L(byId(a.materialId).name))}</b>: ${esc(a.why)}</li>`).join('')}</ul>` : ''}
+    ${d.tips.length ? `<h2>${t('ai_tips')}</h2><ul class="tips">${d.tips.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    <p class="hint">${t(d.offline ? 'off_foot' : 'ai_foot')}</p>`;
+}
+function buildPrompt(task) {
+  const mats = MAT.map(m => `${m.id}; ${L(m.name)}; ${m.y} MPa; ${m.rho} g/cm³; ${m.p[0]}–${m.p[1]} USD/kg`).join('\n');
+  const envs = ENV.map(e => `${e.id}: ${L(e.name)} (typically ${e.t} °C${e.atm ? ', ' + e.rh + '% RH' : ', immersion'})`).join('\n');
+  const lang = LANG === 'en' ? 'English' : 'Russian';
+  return `You are a materials engineer helping a school student choose a material. The user's task:
+"""${task.slice(0, 2000)}"""
+
+Choose materials ONLY from this database (id; name; yield strength; density; sheet price):
+${mats}
+
+Environments (id: name, typical conditions):
+${envs}
+
+Reply with JSON only, no text around it. Write every string in ${lang}. Use this shape:
+{"summary": "1-2 sentences: what matters most for this task", "env": "environment id", "temp": 20, "rh": 50,
+ "recommendations": [{"materialId": "al", "thickness_mm": 3, "life_years": 5, "form": "what form to buy: sheet, profile, tube", "why": "1-2 sentences why", "notes": "main risk or what the life depends on"}],
+ "avoid": [{"materialId": "mg", "why": "why it does not fit"}],
+ "tips": ["short practical tip"]}
+
+Rules: 2-3 recommendations, best first; 0-2 materials in avoid; up to 3 tips. temp and rh are the real working conditions of the part (rh 0 to 100). thickness_mm from 0.5 to 30. life_years is a realistic service life accounting for wear, impacts, fatigue and corrosion. If the task is not about choosing a material, return an empty recommendations list and explain in summary.`;
+}
+const sampleReady = window.claude?.use ? window.claude.use('sample').catch(() => null) : Promise.resolve(null);
+let aiStatusKey = OFFLINE ? 'off_idle' : 'ai_idle';
+const setStatus = k => { aiStatusKey = k; $('aiStatus').textContent = t(k); };
+sampleReady.then(f => { if (!f && !OFFLINE) { OFFLINE = true; setStatus('off_idle'); setHeader(); renderAI(); } });
+const AI_OFF = ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'];
+let ctl = null;
+const toTools = () => $('tools').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+$('examples').addEventListener('click', e => { const b = e.target.closest('[data-ex]'); if (b) { $('task').value = b.textContent; $('task').focus(); } });
+$('stop').onclick = () => ctl?.abort();
+$('aiForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const task = $('task').value.trim();
+  if (!task) { setStatus('ai_empty_task'); $('task').focus(); return; }
+  const sample = OFFLINE ? null : await sampleReady;
+  if (!sample) { OFFLINE = true; setHeader(); lastAI = offlineAdvise(task); renderAI(); setStatus('ai_done'); return; }
+  ctl = new AbortController();
+  $('ask').disabled = true; $('stop').hidden = false;
+  setStatus('ai_thinking');
+  try {
+    const raw = await sample.json(buildPrompt(task), { signal: ctl.signal });
+    lastAI = { ...normalize(raw), task };
+    renderAI();
+    setStatus('ai_done');
+  } catch (err) {
+    if (err?.code === 'cancelled') setStatus('ai_stopped');
+    else if (AI_OFF.includes(err?.code)) { OFFLINE = true; setHeader(); lastAI = offlineAdvise(task); renderAI(); setStatus('ai_done'); }
+    else setStatus(T.ru['err_' + err?.code] ? 'err_' + err.code : 'err_other');
+  }
+  $('ask').disabled = false; $('stop').hidden = true; ctl = null;
+});
+$('aiOut').addEventListener('click', e => {
+  const sim = e.target.closest('[data-sim]'), ap = e.target.closest('[data-apply]');
+  if (sim) { $('focus').value = sim.dataset.sim; show('sim'); toTools(); return; }
+  if (!ap) return;
+  const d = shownAI(), r = d.recommendations[+ap.dataset.apply];
+  $('env').value = d.env; applyEnvDefaults();
+  $('temp').value = d.temp; $('rh').value = d.rh;
+  $('t0').value = Math.min(30, Math.max(1, Math.round(r.thickness_mm * 2) / 2));
+  $('life').value = Math.min(100, Math.max(1, Math.round(r.life_years)));
+  $('prot').value = 'none';
+  if (d.params) ['ymin', 'wc', 'ww', 'wd'].forEach(k => { $(k).value = d.params[k]; });
+  $('focus').value = r.materialId;
+  refresh(); show('sel'); toTools();
+});
+
+/* ---------- Вкладки, заголовок, язык ---------- */
+let TAB = 'ai';
+function setHeader() {
+  const k = TAB === 'ai' && OFFLINE ? TAB + '_off' : TAB;
+  const [a, b] = t('h1_' + k);
+  $('h1a').textContent = a; $('h1b').textContent = b;
+  $('hsub').textContent = t('sub_' + k);
+}
+function show(tab) {
+  TAB = tab;
+  ['ai', 'sel', 'sim', 'bat'].forEach(x => {
+    $('p-' + x).hidden = x !== tab;
+    $('tab-' + x).setAttribute('aria-selected', String(x === tab));
+  });
+  document.querySelectorAll('.links a[data-go]').forEach(a => a.classList.toggle('on', a.dataset.go === tab));
+  setHeader();
+  if (tab === 'sim') renderSim();
+  if (tab === 'bat') renderBat();
+}
+['ai', 'sel', 'sim', 'bat'].forEach(x => $('tab-' + x).onclick = () => show(x));
+document.querySelectorAll('a[data-go]').forEach(a => a.addEventListener('click', () => show(a.dataset.go)));
+
+function fillSelect(id, items, label) {
+  const el = $(id), v = el.value;
+  el.innerHTML = items.map(x => `<option value="${x.id}">${label(x)}</option>`).join('');
+  if (v) el.value = v;
+}
+function applyStatic() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i]').forEach(el => el.textContent = t(el.dataset.i));
+  document.querySelectorAll('[data-ip]').forEach(el => el.placeholder = t(el.dataset.ip));
+  document.querySelectorAll('[data-ia]').forEach(el => el.setAttribute('aria-label', t(el.dataset.ia)));
+  $('lang-ru').setAttribute('aria-pressed', String(LANG === 'ru'));
+  $('lang-en').setAttribute('aria-pressed', String(LANG === 'en'));
+  fillSelect('env', ENV, e => L(e.name));
+  fillSelect('prot', PROT, p => L(p.name));
+  fillSelect('focus', MAT, m => L(m.name));
+  fillSelect('cur', ['kzt', 'usd', 'eur'].map(id => ({ id })), c => t('cur_' + c.id));
+  $('examples').innerHTML = EXAMPLES[LANG].map(x => `<button class="chip" type="button" data-ex>${esc(x)}</button>`).join('');
+  $('bPresets').innerHTML = PRESETS.map((p, i) => `<button class="chip" type="button" data-pre="${i}">${esc(L(p.name))}</button>`).join('');
+  const num = s => LANG === 'en' ? s.replace(/,/g, '.') : s;
+  $('bTable').innerHTML = REAL.map(r => `<tr><td>${esc(L(r[0]))}</td><td>${num(r[1])} ${t('u_V')}</td><td>${r[2]}</td><td>${esc(L(r[3]))}</td></tr>`).join('');
+  $('aiStatus').textContent = t(aiStatusKey);
+  setHeader();
+  renderCaveText();
+}
+function setLang(l) {
+  LANG = l;
+  try { localStorage.setItem('lang', l); } catch (e) {}
+  if (lastAI?.offline) lastAI = offlineAdvise(lastAI.task);
+  applyStatic(); refresh(); renderBat(); renderAI();
+}
+$('lang-ru').onclick = () => setLang('ru');
+$('lang-en').onclick = () => setLang('en');
+
+/* ---------- Инициализация ---------- */
+applyStatic();
+$('env').value = 'coastal'; $('cur').value = 'kzt'; $('focus').value = 'steel';
+function applyEnvDefaults() {
+  const e = ENV.find(x => x.id === $('env').value);
+  $('temp').min = e.atm ? -30 : 0;
+  $('temp').value = e.t; $('rh').value = e.rh;
+}
+applyEnvDefaults();
+function refresh() { renderSelector(); renderSim(); }
+$('env').addEventListener('input', () => { applyEnvDefaults(); refresh(); });
+['temp','rh','t0','life','ymin','rmax','prot','wc','ww','wd'].forEach(id => $(id).addEventListener('input', refresh));
+$('cur').addEventListener('input', () => { refresh(); renderAI(); });
+['yr','focus'].forEach(id => $(id).addEventListener('input', renderSim));
+$('chips').addEventListener('click', e => {
+  const b = e.target.closest('[data-cmp]'); if (!b) return;
+  const id = b.dataset.cmp;
+  compare = compare.includes(id) ? compare.filter(x => x !== id) : [...compare, id].slice(-5);
+  renderSim();
+});
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('[data-sim]'); if (!b) return;
+  $('focus').value = b.dataset.sim; show('sim'); toTools();
+});
+$('bPresets').addEventListener('click', e => {
+  const b = e.target.closest('[data-pre]'); if (!b) return;
+  const p = PRESETS[+b.dataset.pre]; bat.an = p.an; bat.cat = p.cat; renderBat();
+});
+$('shelf').addEventListener('click', e => {
+  const b = e.target.closest('[data-el]'); if (!b) return;
+  bat[bat.slot] = b.dataset.el;
+  bat.slot = bat.slot === 'an' ? 'cat' : 'an';
+  renderBat();
+});
+$('slotAn').onclick = () => { bat.slot = 'an'; renderBat(); };
+$('slotCat').onclick = () => { bat.slot = 'cat'; renderBat(); };
+$('bSwap').onclick = () => { [bat.an, bat.cat] = [bat.cat, bat.an]; renderBat(); };
+['bCan','bCcat','bT','bV','bM','bR','bRi','bN'].forEach(id => $(id).addEventListener('input', renderBat));
+refresh(); renderBat(); renderAI();
+</script>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function makeRenderer(canvas, alpha) {
+  const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha });
+  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  r.toneMapping = THREE.ACESFilmicToneMapping;
+  r.outputColorSpace = THREE.SRGBColorSpace;
+  return r;
+}
+function fit(r, cam) {
+  const c = r.domElement, w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h) return false;
+  if (c.width !== Math.round(w * r.getPixelRatio()) || c.height !== Math.round(h * r.getPixelRatio())) {
+    r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); return true;
+  }
+  return false;
+}
+function watch(el) {
+  const s = { on: true };
+  new IntersectionObserver(([e]) => { s.on = e.isIntersecting; }).observe(el);
+  return s;
+}
+// дешёвый «шум» из синусов: достаточно для камня
+const n3 = (x, y, z) => Math.sin(x * 1.7 + Math.sin(y * 1.3)) * Math.cos(y * 1.9 + Math.sin(z * 1.1)) + 0.5 * Math.sin(z * 3.1 + x * 2.3) * Math.cos(x * 2.9 - y * 1.7);
+
+/* ---------- главный экран: жидкий металл и решётка атомов ---------- */
+{
+  const canvas = document.getElementById('heroCanvas');
+  const r = makeRenderer(canvas, true);
+  const scene = new THREE.Scene();
+  const pm = new THREE.PMREMGenerator(r);
+  scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+  const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+  cam.position.set(0, 0, 8);
+  const group = new THREE.Group();
+  scene.add(group);
+
+  const geo = new THREE.SphereGeometry(1.35, 128, 96);
+  const base = geo.attributes.position.array.slice();
+  const blob = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color: 0xe8ebef, metalness: 1, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.1, envMapIntensity: 1.8 }));
+  group.add(blob);
+  const warm = new THREE.PointLight(0xff6a2b, 60, 0, 2); warm.position.set(3, -1.5, 2.5); scene.add(warm);
+  const cool = new THREE.PointLight(0x7fb4ff, 30, 0, 2); cool.position.set(-3, 2, 2); scene.add(cool);
+
+  // оболочка из точек, как кристаллическая решётка
+  const N = 1600, pts = new Float32Array(N * 3), golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N; i++) {
+    const y = 1 - (i / (N - 1)) * 2, rad = Math.sqrt(1 - y * y), th = golden * i, R = 2.25;
+    pts.set([Math.cos(th) * rad * R, y * R, Math.sin(th) * rad * R], i * 3);
+  }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pts, 3));
+  const shell = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xffffff, size: 0.022, transparent: true, opacity: 0.55, depthWrite: false }));
+  group.add(shell);
+  const ringG = new THREE.BufferGeometry(), RN = 220, ring = new Float32Array(RN * 3);
+  for (let i = 0; i < RN; i++) { const a = i / RN * Math.PI * 2; ring.set([Math.cos(a) * 2.9, 0, Math.sin(a) * 2.9], i * 3); }
+  ringG.setAttribute('position', new THREE.BufferAttribute(ring, 3));
+  const orbit = new THREE.Points(ringG, new THREE.PointsMaterial({ color: 0xff6a2b, size: 0.035, transparent: true, opacity: 0.9, depthWrite: false }));
+  orbit.rotation.set(1.15, 0, 0.35);
+  group.add(orbit);
+
+  let px = 0, py = 0;
+  addEventListener('pointermove', e => { px = e.clientX / innerWidth - 0.5; py = e.clientY / innerHeight - 0.5; }, { passive: true });
+  const vis = watch(canvas);
+  const pos = geo.attributes.position;
+  function deform(time) {
+    for (let i = 0; i < pos.count; i++) {
+      const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
+      const k = 1 + 0.075 * Math.sin(2.6 * x + time * 1.1) * Math.cos(2.2 * y - time * 0.8) + 0.05 * Math.sin(3.4 * z + time * 1.4 + y * 1.5);
+      pos.setXYZ(i, x * k, y * k, z * k);
+    }
+    pos.needsUpdate = true; geo.computeVertexNormals();
+  }
+  function layout() {
+    const wide = cam.aspect > 1.15;
+    group.position.set(wide ? 1.9 : 0, wide ? 0.25 : 2.1, 0);
+    group.scale.setScalar(wide ? 1 : 0.6);
+  }
+  const clock = new THREE.Clock();
+  function frame() {
+    requestAnimationFrame(frame);
+    if (!vis.on) return;
+    const resized = fit(r, cam);
+    if (resized) layout();
+    if (reduce && !resized) return;
+    const time = clock.getElapsedTime();
+    if (!reduce) {
+      deform(time);
+      shell.rotation.y = time * 0.06; orbit.rotation.z = 0.35 + time * 0.25;
+      group.rotation.y += ((px * 0.6) - group.rotation.y) * 0.05;
+      group.rotation.x += ((py * 0.4) - group.rotation.x) * 0.05;
+    }
+    r.render(scene, cam);
+  }
+  fit(r, cam); layout(); deform(0); r.render(scene, cam); frame();
+}
+
+/* ---------- шахта: полёт по тоннелю мимо рудных жил ---------- */
+{
+  const canvas = document.getElementById('caveCanvas');
+  const r = makeRenderer(canvas, false);
+  r.setClearColor(0x070808);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x070808, 0.045);
+  // отражения только у металла: камень освещают фонарь и свечение жил
+  const envTex = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+  const cam = new THREE.PerspectiveCamera(62, 1, 0.1, 200);
+  scene.add(cam);
+  const lamp = new THREE.PointLight(0xffd9b3, 90, 34, 1.7); lamp.position.set(0, 0.6, 0); cam.add(lamp);
+  scene.add(new THREE.HemisphereLight(0x3a4a5a, 0x120d0a, 0.35));
+
+  // путь: извилистая кривая вглубь
+  const P = [];
+  for (let i = 0; i <= 16; i++) P.push(new THREE.Vector3(Math.sin(i * 0.7) * 7, Math.sin(i * 0.45 + 1) * 3 - i * 1.2, -i * 18));
+  const curve = new THREE.CatmullRomCurve3(P);
+  const tube = new THREE.TubeGeometry(curve, 900, 6, 36, false);
+  const tp = tube.attributes.position, tn = tube.attributes.normal, col = new Float32Array(tp.count * 3);
+  const c = new THREE.Color();
+  for (let i = 0; i < tp.count; i++) {
+    const x = tp.getX(i), y = tp.getY(i), z = tp.getZ(i);
+    const d = 1.6 * n3(x * 0.35, y * 0.35, z * 0.35) + 0.6 * n3(x * 1.1, y * 1.1, z * 1.1);
+    tp.setXYZ(i, x + tn.getX(i) * d, y + tn.getY(i) * d, z + tn.getZ(i) * d);
+    // лёгкие пятна поверх фото-текстуры, чтобы повтор не бросался в глаза
+    const tone = 0.72 + 0.28 * (0.5 + 0.5 * n3(x * 0.15, y * 0.15, z * 0.15));
+    c.setRGB(tone, tone * 0.96, tone * 0.92);
+    col.set([c.r, c.g, c.b], i * 3);
+  }
+  tube.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  tube.computeVertexNormals();
+  // фото-текстура скалы Cliff Side (Poly Haven, CC0): цвет, рельеф и ARM (затенение, шероховатость, металличность)
+  const loader = new THREE.TextureLoader();
+  const tex = (name, srgb, rx, ry) => {
+    const tx = loader.load('tex/cliff_side_' + name + '_1k.jpg');
+    tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(rx, ry);
+    tx.anisotropy = r.capabilities.getMaxAnisotropy();
+    if (srgb) tx.colorSpace = THREE.SRGBColorSpace;
+    return tx;
+  };
+  const rockMat = (rx, ry, side) => {
+    const arm = tex('arm', false, rx, ry);
+    return new THREE.MeshStandardMaterial({ map: tex('diff', true, rx, ry), normalMap: tex('nor_gl', false, rx, ry), normalScale: new THREE.Vector2(1.6, 1.6),
+      aoMap: arm, roughnessMap: arm, metalnessMap: arm, roughness: 1, metalness: 1, vertexColors: side === THREE.BackSide, side });
+  };
+  scene.add(new THREE.Mesh(tube, rockMat(34, 4, THREE.BackSide)));
+  const lumpMat = rockMat(1.5, 1.5, THREE.FrontSide);
+
+  // рудные жилы: у каждого металла своя форма кристаллов и своя фото-текстура (ambientCG, CC0)
+  const shapes = {
+    Fe: () => new THREE.BoxGeometry(0.9, 0.9, 0.9),
+    Cu: () => new THREE.OctahedronGeometry(0.6).scale(0.7, 1.8, 0.7),
+    Zn: () => new THREE.CylinderGeometry(0.42, 0.42, 1.4, 6),
+    Al: () => new THREE.BoxGeometry(1.3, 0.14, 0.9),
+    Ti: () => new THREE.ConeGeometry(0.16, 2.4, 6),
+    Au: () => new THREE.DodecahedronGeometry(0.55, 1)
+  };
+  // tint: оттенок поверх текстуры (у цинка и титана текстуры почти серые)
+  const tint = { Fe: 0xffffff, Cu: 0xf07a3c, Zn: 0xc4d8e6, Al: 0xffffff, Ti: 0xcfc8f0, Au: 0xffb933 };
+  const metalTex = (sym, map, srgb) => {
+    const tx = loader.load('tex/' + sym + '_' + map + '.jpg');
+    tx.anisotropy = r.capabilities.getMaxAnisotropy();
+    if (srgb) tx.colorSpace = THREE.SRGBColorSpace;
+    return tx;
+  };
+  const UP = new THREE.Vector3(0, 1, 0);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const targets = [], groups = [];
+  window.CAVE.forEach((m, i) => {
+    const at = curve.getPointAt(m.u), tan = curve.getTangentAt(m.u);
+    const side = new THREE.Vector3().crossVectors(tan, UP).normalize().multiplyScalar(i % 2 ? 1 : -1);
+    const center = at.clone().addScaledVector(side, 4.4).add(new THREE.Vector3(0, (i % 3 - 1) * 1.1, 0));
+    targets.push(center);
+    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 3), lumpMat);
+    rock.position.copy(center).addScaledVector(side, 1.6); scene.add(rock);
+    const color = new THREE.Color(m.color);
+    const colorMap = metalTex(m.sym, 'color', true);
+    const mat = new THREE.MeshStandardMaterial({
+      map: colorMap, normalMap: metalTex(m.sym, 'normalgl', false), roughnessMap: metalTex(m.sym, 'roughness', false),
+      color: tint[m.sym], metalness: 1, roughness: 1, envMap: envTex, envMapIntensity: 1.7,
+      emissive: tint[m.sym], emissiveMap: colorMap, emissiveIntensity: 0.06
+    });
+    // друза: кристаллы растут из одной точки наружу, к тоннелю
+    const g = new THREE.Group(); g.position.copy(center);
+    for (let k = 0; k < 20; k++) {
+      const dir = new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize();
+      const out = dir.dot(side); if (out > 0) dir.addScaledVector(side, -2 * out);
+      const mesh = new THREE.Mesh(shapes[m.sym](), mat);
+      mesh.position.copy(dir).multiplyScalar(0.25 + rnd() * 1.1);
+      mesh.quaternion.setFromUnitVectors(UP, dir);
+      mesh.rotateY(rnd() * 6.28);
+      mesh.scale.setScalar(0.5 + rnd() * 0.75);
+      g.add(mesh);
+    }
+    scene.add(g); groups.push(g);
+    const glow = new THREE.PointLight(color, 45, 16, 1.8);
+    glow.position.copy(center).addScaledVector(side, -1.5); scene.add(glow);
+  });
+
+  // пыль в луче фонаря
+  const DN = 1800, dust = new Float32Array(DN * 3);
+  for (let i = 0; i < DN; i++) {
+    const p = curve.getPointAt(rnd()), a = rnd() * 6.28, rr = rnd() * 4.5;
+    dust.set([p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr, p.z + (rnd() - 0.5) * 2], i * 3);
+  }
+  const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dust, 3));
+  const dot = document.createElement('canvas'); dot.width = dot.height = 32;
+  const dc = dot.getContext('2d'), grd = dc.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  dc.fillStyle = grd; dc.fillRect(0, 0, 32, 32);
+  scene.add(new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffe2c4, size: 0.06, map: new THREE.CanvasTexture(dot), transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending })));
+
+  const vis = watch(canvas);
+  let cur = window.caveProgress || 0;
+  const look = new THREE.Vector3(), tmp = new THREE.Vector3();
+  const clock = new THREE.Clock();
+  function frame() {
+    requestAnimationFrame(frame);
+    if (!vis.on) return;
+    fit(r, cam);
+    const goal = window.caveProgress || 0;
+    cur += (goal - cur) * (reduce ? 1 : 0.08);
+    const u = 0.02 + cur * 0.95;
+    cam.position.copy(curve.getPointAt(u));
+    // у остановки камера поворачивается к жиле
+    let wMax = 0, best = null;
+    window.CAVE.forEach((m, i) => { const w = Math.exp(-Math.pow((u - m.u) / 0.04, 2)); if (w > wMax) { wMax = w; best = targets[i]; } });
+    tmp.copy(curve.getPointAt(Math.min(u + 0.02, 1)));
+    if (best) tmp.lerp(best, wMax * 0.85);
+    if (look.lengthSq() === 0) look.copy(tmp); else look.lerp(tmp, reduce ? 1 : 0.1);
+    cam.lookAt(look);
+    if (!reduce) { const time = clock.getElapsedTime(); groups.forEach((g, i) => { g.rotation.y = Math.sin(time * 0.3 + i) * 0.25; }); }
+    r.render(scene, cam);
+  }
+  frame();
+}
+document.querySelector('.cave-fallback').hidden = true;
+</script>
+
+</body>
+</html>
